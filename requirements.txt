@@ -1,0 +1,13 @@
+langchain
+langchain-openai
+python-dotenv
+langchain-community
+langsmith
+langchain_ollama
+langgraph
+tqdm
+pandas
+matplotlib
+fastapi
+mcp
+langchain-mcp-adapters
