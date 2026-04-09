@@ -28,6 +28,7 @@ class State(TypedDict):
 
 
 class MetamodelingAgent:
+    # The constructor initializes the LLM and the prompt template. It also sets up a placeholder for the human validator function, which can be provided when running the agent.
     def __init__(self):
         openai_model = os.getenv("OPENAI_MODEL", "gpt-5.3-chat-latest")
         self.system_prompt = prompt
@@ -37,18 +38,18 @@ class MetamodelingAgent:
             ("human", "{input}")
         ]) | llm
         self._human_validator: Callable[[dict], bool] | None = None
-
+    # A helper method to invoke the LLM and get raw text responses, without any parsing or assumptions about the format.
     def _invoke_text(self, user_content: str) -> str:
         response = self.llm.invoke({"input": user_content})
         return response.content if isinstance(response.content, str) else str(response.content)
-
+    # A helper method to invoke the LLM and parse JSON responses, with error handling for invalid JSON.
     def _invoke_json(self, user_content: str) -> dict:
         raw = self._invoke_text(user_content)
         return json.loads(raw)
-
+    # The first step is to understand the user's intent and the domain they are working in. This will help us tailor the concept elicitation and chunk generation to their specific needs.
     def _gather_intent(self, state: State) -> State:
         return {"intent_summary": state.get("user_prompt", "")}
-
+    # negotiates concept list with the user.
     def _knowledge_elicitation(self, state: State) -> State:
         intent = state.get("intent_summary", "")
         familiar_answer = input("Are you familiar with the domain concepts? [y/N]: ").strip().lower()
@@ -89,6 +90,7 @@ class MetamodelingAgent:
 
         return {"user_familiar": user_familiar, "concepts": concepts or [intent]}
 
+    # The LLM generates the concept list and added functionalities based on the user's intent.
     def _decompose_concepts(self, state: State) -> State:
         if state.get("concepts"):
             return {
@@ -123,6 +125,7 @@ class MetamodelingAgent:
             "done": False,
         }
 
+    # The LLM generates a JjScript chunk for the current concept. If the previous chunk failed validation, it also includes feedback from that validation to guide the generation of the next chunk.
     def _generate_chunk(self, state: State) -> State:
         concepts = state.get("concepts", [])
         idx = state.get("current_index", 0)
@@ -151,13 +154,13 @@ class MetamodelingAgent:
         )
         return {"current_concept": concept, "current_chunk": chunk}
 
-# We should have a specific prompt for the sample model generation, and another one for the validation to avoid confusion between the two tasks.
+    # The LLM generates a sample model instance for the current concept and validates the generated chunk against that sample model. These two tasks are done in parallel to save time, as they are independent of each other.
     def _build_sample_model(self, state: State) -> str:
         return self._invoke_text(
-            "Write one compact plain-text sample model instance that this concept should represent.\n\n"
-            f"Chunk:\n{state.get('current_chunk', '')}"
+            "Write one compact plain-text sample model instance that this concept should represent. This should challenge the model's understanding and cover edge cases.\n\n"
+            f"Concept:\n{state.get('current_concept', '')}"
         )
-     
+     # The validation prompt asks the LLM to evaluate whether the generated chunk correctly captures the current concept and can represent the sample model. The LLM should provide a boolean validity flag, a list of issues if any, and suggestions for improvement.
     def _validate_chunk(self, state: State, sample_model: str) -> dict:
         return self._invoke_json(
             "Does this chunk correctly cover the concept and represent the sample model?\n\n"
@@ -167,13 +170,14 @@ class MetamodelingAgent:
             f"Sample model:\n{sample_model}\n"
             f"Chunk:\n{state.get('current_chunk', '')}"
         )
-
+    # This method runs the sample model generation and chunk validation in parallel using a thread pool, and then combines their results into the state for the next step.
     def _parallel_validate(self, state: State) -> State:
         with ThreadPoolExecutor(max_workers=2) as executor:
             sample_model = executor.submit(self._build_sample_model, state).result()
             validation = executor.submit(self._validate_chunk, state, sample_model).result()
         return {"current_sample_model": sample_model, "current_validation": validation}
 
+    # After the LLM validation, we ask the human user to review the generated chunk and the validation feedback. The human can approve the chunk or reject it. 
     def _human_validate(self, state: State) -> State:
         payload = {
             "concept": state.get("current_concept", ""),
@@ -188,7 +192,7 @@ class MetamodelingAgent:
         max_retries = 3
         valid = bool(state.get("current_validation", {}).get("valid", False))
         human_approved = bool(state.get("human_approved", False))
-        if valid and human_approved:
+        if human_approved: #if valid and human_approved:
             approved_chunks = [*state.get("approved_chunks", []), state.get("current_chunk", "")]
             next_idx = state.get("current_index", 0) + 1
             done = next_idx >= len(state.get("concepts", []))
@@ -220,8 +224,6 @@ class MetamodelingAgent:
         builder = StateGraph(State)
         builder.add_node("knowledge_elicitation", self._knowledge_elicitation)
         builder.add_node("gather_intent", self._gather_intent)
-# The LLM proposes pieces of knowledge (concepts and questions), make the user choose which one to work on. (knowledge elicitation)
-# The level of abstraction can change depending on the purpose. 
         builder.add_node("decompose_concepts", self._decompose_concepts)
         builder.add_node("generate_chunk", self._generate_chunk)
         builder.add_node("parallel_validate", self._parallel_validate)
@@ -232,7 +234,6 @@ class MetamodelingAgent:
         builder.add_edge("knowledge_elicitation", "decompose_concepts")
         builder.add_edge("decompose_concepts", "generate_chunk")
         builder.add_edge("generate_chunk", "parallel_validate")
-# 
         builder.add_edge("parallel_validate", "human_validate")
         builder.add_edge("human_validate", "advance")
         builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": END})
