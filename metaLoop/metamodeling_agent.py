@@ -4,7 +4,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, TypedDict
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 load_dotenv()
@@ -31,14 +31,15 @@ class MetamodelingAgent:
     def __init__(self):
         openai_model = os.getenv("OPENAI_MODEL", "gpt-5.3-chat-latest")
         self.system_prompt = prompt
-        self.llm = ChatOpenAI(model=openai_model, max_retries=2)
+        llm = ChatOpenAI(model=openai_model, max_retries=2)
+        self.llm = ChatPromptTemplate.from_messages([
+            ("system", self.system_prompt),
+            ("human", "{input}")
+        ]) | llm
         self._human_validator: Callable[[dict], bool] | None = None
 
     def _invoke_text(self, user_content: str) -> str:
-        response = self.llm.invoke([
-            SystemMessage(content=self.system_prompt),
-            HumanMessage(content=user_content),
-        ])
+        response = self.llm.invoke({"input": user_content})
         return response.content if isinstance(response.content, str) else str(response.content)
 
     def _invoke_json(self, user_content: str) -> dict:
