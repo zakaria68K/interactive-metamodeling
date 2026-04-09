@@ -15,15 +15,16 @@ class State(TypedDict):
     intent_summary: str # A concise summary of the user's intent, extracted from the original prompt.
     concepts: list[str] # A list of core metamodeling concepts that need to be addressed to fulfill the user's request. These should be derived from the intent summary and represent distinct aspects of the metamodel.
     added_functionalities: list[str] # A list of additional functionalities that are necessary to implement the metamodel effectively. These should be identified during the decomposition of the user's request.
-    current_index: int # Which concept is being processed right now
-    current_concept: str # The current concept being processed
-    current_chunk: str # The JjScript code generated for the current concept
-    current_sample_model: str # A sample model generated for the current concept
-    current_validation: dict # Validation result (valid, issues, suggestion)
-    human_approved: bool # Whether a human approved the current chunk
-    approved_chunks: list[str] # All chunks that passed validation and approval
-    final_metamodel: str # The final output
-    done: bool # Whether the loop should terminate
+    current_index: int # Which concept is being processed right now.
+    concept_retry_count: int # Number of failed attempts for the current concept.
+    current_concept: str # The current concept being processed.
+    current_chunk: str # The JjScript code generated for the current concept.
+    current_sample_model: str # A sample model generated for the current concept.
+    current_validation: dict # Validation result (valid, issues, suggestion).
+    human_approved: bool # Whether a human approved the current chunk.
+    approved_chunks: list[str] # All chunks that passed validation and approval.
+    final_metamodel: str # The final output.
+    done: bool # Whether the loop should terminate.
 
 
 class MetamodelingAgent:
@@ -48,10 +49,11 @@ class MetamodelingAgent:
         return {"intent_summary": state.get("user_prompt", "")}
 
     def _decompose_concepts(self, state: State) -> State:
+
         parsed = self._invoke_json(
             "Decompose this request into 2 core metamodel concepts and identify any missing "
             "essential functionalities.\n\n"
-            "Reply with raw JSON only, no markdown, no extra text. Keys: "
+            "Reply with raw JSON ONLY, no markdown, no extra text. Keys: "
             "intent_summary (string), concepts (array of strings), added_functionalities (array of strings).\n\n"
             f"Request:\n{state.get('intent_summary', '')}"
         )
@@ -59,7 +61,6 @@ class MetamodelingAgent:
         print("\n=== Concepts ===")
         for c in concepts:
             print(f"  - {c}")
-        #sys.exit(0)
         if not concepts:
             concepts = [state.get("intent_summary", "")]
         return {
@@ -67,6 +68,7 @@ class MetamodelingAgent:
             "concepts": concepts,
             "added_functionalities": parsed.get("added_functionalities", []),
             "current_index": 0,
+            "concept_retry_count": 0,
             "approved_chunks": [],
             "done": False,
         }
@@ -81,21 +83,31 @@ class MetamodelingAgent:
             }
         concept = concepts[idx]
         approved_chunks = "\n\n".join(state.get("approved_chunks", [])) or "(none)"
+        feedback = ""
+        if state.get("current_validation") and not state.get("current_validation", {}).get("valid"):
+            issues = state["current_validation"].get("issues", [])
+            suggestion = state["current_validation"].get("suggestion", "")
+            feedback = (
+                f"\n\nPrevious validation feedback:\n"
+                f"Issues: {', '.join(issues)}\n"
+                f"Suggestion: {suggestion}"
+            )
         chunk = self._invoke_text(
-            "Generate the next JjScript chunk for the concept below. "
-            "Output code only, no markdown fences.\n\n"
+            f"Generate the next JjScript chunk for the concept below.{feedback}"
+            "Output code only, no markdown or explanations.\n\n"
             f"Intent: {state.get('intent_summary', '')}\n"
             f"Concept: {concept}\n"
             f"Approved chunks so far:\n{approved_chunks}"
         )
         return {"current_concept": concept, "current_chunk": chunk}
 
+# We should have a specific prompt for the sample model generation, and another one for the validation to avoid confusion between the two tasks.
     def _build_sample_model(self, state: State) -> str:
         return self._invoke_text(
             "Write one compact plain-text sample model instance that this concept should represent.\n\n"
             f"Chunk:\n{state.get('current_chunk', '')}"
         )
-
+     
     def _validate_chunk(self, state: State, sample_model: str) -> dict:
         return self._invoke_json(
             "Does this chunk correctly cover the concept and represent the sample model?\n\n"
@@ -123,6 +135,7 @@ class MetamodelingAgent:
         return {"human_approved": approved}
 
     def _advance(self, state: State) -> State:
+        max_retries = 3
         valid = bool(state.get("current_validation", {}).get("valid", False))
         human_approved = bool(state.get("human_approved", False))
         if valid and human_approved:
@@ -132,10 +145,23 @@ class MetamodelingAgent:
             return {
                 "approved_chunks": approved_chunks,
                 "current_index": next_idx,
+                "concept_retry_count": 0,
                 "done": done,
                 "final_metamodel": "\n\n".join(approved_chunks) if done else "",
             }
-        return {}
+        retry_count = state.get("concept_retry_count", 0) + 1
+        if retry_count >= max_retries:
+            concept = state.get("current_concept", "")
+            print(f"Concept '{concept}' failed after {max_retries} retries, skipping it.")
+            next_idx = state.get("current_index", 0) + 1
+            done = next_idx >= len(state.get("concepts", []))
+            return {
+                "current_index": next_idx,
+                "concept_retry_count": 0,
+                "done": done,
+                "final_metamodel": "\n\n".join(state.get("approved_chunks", [])) if done else "",
+            }
+        return {"concept_retry_count": retry_count}
 
     def _router(self, state: State) -> str:
         return "end" if state.get("done", False) else "next"
