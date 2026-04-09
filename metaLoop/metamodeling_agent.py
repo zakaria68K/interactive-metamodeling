@@ -8,10 +8,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 load_dotenv()
-import sys
 
 class State(TypedDict):
     user_prompt: str
+    user_familiar: bool # Whether the user is familiar with the domain concepts.
     intent_summary: str # A concise summary of the user's intent, extracted from the original prompt.
     concepts: list[str] # A list of core metamodeling concepts that need to be addressed to fulfill the user's request. These should be derived from the intent summary and represent distinct aspects of the metamodel.
     added_functionalities: list[str] # A list of additional functionalities that are necessary to implement the metamodel effectively. These should be identified during the decomposition of the user's request.
@@ -48,7 +48,56 @@ class MetamodelingAgent:
     def _gather_intent(self, state: State) -> State:
         return {"intent_summary": state.get("user_prompt", "")}
 
+    def _knowledge_elicitation(self, state: State) -> State:
+        intent = state.get("intent_summary", "")
+        familiar_answer = input("Are you familiar with the domain concepts? [y/N]: ").strip().lower()
+        user_familiar = familiar_answer in {"y", "yes"}
+
+        base_prompt = (
+            "Propose 2 core metamodel concepts for the request below. "
+            "Reply with raw JSON only with key: concepts (array of strings).\n\n"
+            f"Request:\n{intent}"
+        )
+        if not user_familiar:
+            base_prompt = (
+                "The user is not familiar with the domain. Propose 2 beginner-friendly core metamodel concepts "
+                "for the request below. Reply with raw JSON only with key: concepts (array of strings).\n\n"
+                f"Request:\n{intent}"
+            )
+
+        concepts: list[str] = []
+        for _ in range(3):
+            parsed = self._invoke_json(base_prompt)
+            concepts = [c.strip() for c in parsed.get("concepts", []) if str(c).strip()]
+            if not concepts:
+                break
+            print("\nLLM suggested concepts:")
+            for i, c in enumerate(concepts, start=1):
+                print(f"  {i}. {c}")
+            ok = input("Do you agree with these concepts? [Y/n]: ").strip().lower()
+            if ok in {"", "y", "yes"}:
+                return {"user_familiar": user_familiar, "concepts": concepts}
+            feedback = input("What should be changed? ").strip()
+            base_prompt = (
+                "Revise the concept list based on this user feedback. "
+                "Reply with raw JSON only with key: concepts (array of strings).\n\n"
+                f"Request:\n{intent}\n\n"
+                f"Current concepts: {concepts}\n"
+                f"User feedback: {feedback}"
+            )
+
+        return {"user_familiar": user_familiar, "concepts": concepts or [intent]}
+
     def _decompose_concepts(self, state: State) -> State:
+        if state.get("concepts"):
+            return {
+                "concepts": state.get("concepts", []),
+                "added_functionalities": state.get("added_functionalities", []),
+                "current_index": 0,
+                "concept_retry_count": 0,
+                "approved_chunks": [],
+                "done": False,
+            }
 
         parsed = self._invoke_json(
             "Decompose this request into 2 core metamodel concepts and identify any missing "
@@ -168,17 +217,21 @@ class MetamodelingAgent:
 
     def create_metamodeling_agent(self):
         builder = StateGraph(State)
+        builder.add_node("knowledge_elicitation", self._knowledge_elicitation)
         builder.add_node("gather_intent", self._gather_intent)
+# The LLM proposes pieces of knowledge (concepts and questions), make the user choose which one to work on. (knowledge elicitation)
+# The level of abstraction can change depending on the purpose. 
         builder.add_node("decompose_concepts", self._decompose_concepts)
         builder.add_node("generate_chunk", self._generate_chunk)
         builder.add_node("parallel_validate", self._parallel_validate)
         builder.add_node("human_validate", self._human_validate)
         builder.add_node("advance", self._advance)
-
         builder.add_edge(START, "gather_intent")
-        builder.add_edge("gather_intent", "decompose_concepts")
+        builder.add_edge("gather_intent", "knowledge_elicitation")
+        builder.add_edge("knowledge_elicitation", "decompose_concepts")
         builder.add_edge("decompose_concepts", "generate_chunk")
         builder.add_edge("generate_chunk", "parallel_validate")
+# 
         builder.add_edge("parallel_validate", "human_validate")
         builder.add_edge("human_validate", "advance")
         builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": END})
