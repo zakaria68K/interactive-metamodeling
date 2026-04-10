@@ -49,7 +49,7 @@ class MetamodelingAgent:
     # The first step is to understand the user's intent and the domain they are working in. This will help us tailor the concept elicitation and chunk generation to their specific needs.
     def _gather_intent(self, state: State) -> State:
         return {"intent_summary": state.get("user_prompt", "")}
-    # negotiates concept list with the user.
+    # Negotiates concept list with the user.
     def _knowledge_elicitation(self, state: State) -> State:
         intent = state.get("intent_summary", "")
         familiar_answer = input("Are you familiar with the domain concepts? [y/N]: ").strip().lower()
