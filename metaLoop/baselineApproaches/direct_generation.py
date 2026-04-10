@@ -1,10 +1,14 @@
 import os
 import sys
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
+
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 from metaLoop.system_prompt import prompt
+
 
 
 load_dotenv()
