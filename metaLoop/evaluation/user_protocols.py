@@ -58,8 +58,3 @@ class NoviceUserProtocol:
             agree=False,
             feedback=fb,
         )
-
-
-def contains_gold_leakage(user_text: str, forbidden_terms: List[str]) -> bool:
-    text = user_text.lower()
-    return any(term.lower() in text for term in forbidden_terms)

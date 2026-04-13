@@ -12,6 +12,7 @@ class MetamodelingAgent:
     def __init__(self):
         self.llm_client = LLMClient()
         self._human_validator: Callable[[dict], bool] | None = None
+        self._user_responder: Callable[[str, dict], str] | None = None
 
     def _invoke_text(self, user_content: str) -> str:
         return self.llm_client.invoke_text(user_content)
@@ -23,7 +24,7 @@ class MetamodelingAgent:
         return gather_intent(state)
 
     def _knowledge_elicitation(self, state: State) -> State:
-        return knowledge_elicitation(state, self._invoke_json)
+        return knowledge_elicitation(state, self._invoke_json, self._user_responder)
 
     def _decompose_concepts(self, state: State) -> State:
         return decompose_concepts(state, self._invoke_json)
@@ -66,6 +67,20 @@ class MetamodelingAgent:
         self,
         user_prompt: str,
         human_validator: Callable[[dict], bool] | None = None,
+        user_responder: Callable[[str, dict], str] | None = None,
     ) -> dict:
         self._human_validator = human_validator
+        self._user_responder = user_responder
         return self.create_metamodeling_agent().invoke({"user_prompt": user_prompt})
+
+    def run_concepts_only(
+        self,
+        user_prompt: str,
+        user_responder: Callable[[str, dict], str] | None = None,
+    ) -> dict:
+        self._user_responder = user_responder
+        state: State = {"user_prompt": user_prompt}
+        state.update(self._gather_intent(state))
+        state.update(self._knowledge_elicitation(state))
+        state.update(self._decompose_concepts(state))
+        return state
