@@ -70,18 +70,12 @@ def build_answers(policy: UserTurnPolicy) -> List[str]:
     return answers
 
 
-def predicted_constraints_from_text(text: str, expected_constraints: List[str]) -> List[str]:
-    lower = text.lower()
-    return [c for c in expected_constraints if c.lower() in lower]
-
-
 def main() -> None:
     dataset = [
         EvalItem(
             item_id="item_1",
             metamodel="state machines",
-            expected_concepts=["transitions", "states"],
-            expected_constraints=["Referential integrity", "State uniqueness"],
+            expected_concepts=["transitions", "states"]
         )
     ]
 
@@ -103,7 +97,7 @@ def main() -> None:
         policy = scripted_user.get(item.item_id)
         leak = contains_gold_leakage(
             policy.background + " " + policy.feedback,
-            item.expected_concepts + item.expected_constraints,
+            item.expected_concepts
         )
 
         answers = build_answers(policy)
