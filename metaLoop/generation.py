@@ -115,7 +115,7 @@ def advance(state: State) -> State:
 def router(state: State) -> str:
     return "end" if state.get("done", False) else "next"
 
-
+# Incremental chunking without robust global reconciliation can create contradictions across chunks, duplicate abstractions, and unstable naming semantics.
 def reconcile_metamodel(state: State, invoke_text: Callable[[str], str]) -> State:
     chunks = state.get("approved_chunks", [])
     if not chunks:

@@ -41,11 +41,19 @@ class LLMClient:
         return response.content if isinstance(response.content, str) else str(response.content)
 
     def invoke_json(self, user_content: str) -> dict:
-        return json.loads(self._extract_json_text(self.invoke_text(user_content)))
+        raw = self._extract_json_text(self.invoke_text(user_content))
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
 
     def invoke_text_validator(self, user_content: str) -> str:
         response = self.validator_chain.invoke({"input": user_content})
         return response.content if isinstance(response.content, str) else str(response.content)
 
     def invoke_json_validator(self, user_content: str) -> dict:
-        return json.loads(self._extract_json_text(self.invoke_text_validator(user_content)))
+        raw = self._extract_json_text(self.invoke_text_validator(user_content))
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {}

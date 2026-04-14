@@ -9,7 +9,7 @@ from langchain_openai import ChatOpenAI
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from metaLoop.system_prompt import prompt
 
-
+#TODO: If interaction budgets, retries, and context windows are not normalized, comparisons are not fair. So maybe we should consider using a local LLM
 
 load_dotenv()
 

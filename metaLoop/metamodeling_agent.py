@@ -7,7 +7,7 @@ from .generation import advance, generate_chunk, human_validate, parallel_valida
 from .llm_client import LLMClient
 from .state import State
 
-
+# TODO: add the executable validity
 class MetamodelingAgent:
     def __init__(self):
         self.llm_client = LLMClient()
