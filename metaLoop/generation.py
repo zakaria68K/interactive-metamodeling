@@ -114,3 +114,21 @@ def advance(state: State) -> State:
 
 def router(state: State) -> str:
     return "end" if state.get("done", False) else "next"
+
+
+def reconcile_metamodel(state: State, invoke_text: Callable[[str], str]) -> State:
+    chunks = state.get("approved_chunks", [])
+    if not chunks:
+        return {"final_metamodel": ""}
+    combined = "\n\n".join(chunks)
+    reconciled = invoke_text(
+        "Below are independently generated metamodel chunks for the same domain.\n"
+        "Reconcile them into one coherent metamodel:\n"
+        "1. Resolve any contradictions between chunks.\n"
+        "2. Merge duplicate or overlapping abstractions.\n"
+        "3. Normalize all naming (PascalCase for classes, camelCase for attributes/references).\n"
+        "Output JjScript only, no markdown or explanations.\n\n"
+        f"Intent: {state.get('intent_summary', '')}\n\n"
+        f"Chunks:\n{combined}"
+    )
+    return {"final_metamodel": reconciled}

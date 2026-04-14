@@ -3,7 +3,7 @@ from typing import Callable
 from langgraph.graph import END, START, StateGraph
 
 from .elicitation import decompose_concepts, gather_intent, knowledge_elicitation
-from .generation import advance, generate_chunk, human_validate, parallel_validate, router
+from .generation import advance, generate_chunk, human_validate, parallel_validate, reconcile_metamodel, router
 from .llm_client import LLMClient
 from .state import State
 
@@ -56,6 +56,9 @@ class MetamodelingAgent:
     def _router(self, state: State) -> str:
         return router(state)
 
+    def _reconcile_metamodel(self, state: State) -> State:
+        return reconcile_metamodel(state, self._invoke_text_validator)
+
     def create_metamodeling_agent(self):
         builder = StateGraph(State)
         builder.add_node("knowledge_elicitation", self._knowledge_elicitation)
@@ -65,6 +68,7 @@ class MetamodelingAgent:
         builder.add_node("parallel_validate", self._parallel_validate)
         builder.add_node("human_validate", self._human_validate)
         builder.add_node("advance", self._advance)
+        builder.add_node("reconcile", self._reconcile_metamodel)
         builder.add_edge(START, "gather_intent")
         builder.add_edge("gather_intent", "knowledge_elicitation")
         builder.add_edge("knowledge_elicitation", "decompose_concepts")
@@ -72,7 +76,8 @@ class MetamodelingAgent:
         builder.add_edge("generate_chunk", "parallel_validate")
         builder.add_edge("parallel_validate", "human_validate")
         builder.add_edge("human_validate", "advance")
-        builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": END})
+        builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": "reconcile"})
+        builder.add_edge("reconcile", END)
         return builder.compile()
 
     def run_iterative(
