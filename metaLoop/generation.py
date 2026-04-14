@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import re
 from typing import Callable
 
 from .state import State
@@ -36,11 +37,13 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
 
 
 def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
-    return invoke_text(
-        "Write one compact plain-text sample model instance that this concept should represent. "
-        "This should challenge the model's understanding and cover edge cases.\n\n"
+    raw = invoke_text(
+        "Generate one sample model instance for this concept in pure JjScript. "
+        "Include edge cases, but output code only. "
+        "Do not include markdown, explanations, bullets, or prose.\n\n"
         f"Concept:\n{state.get('current_concept', '')}"
     )
+    return raw
 
 
 def validate_chunk(state: State, sample_model: str, invoke_json: Callable[[str], dict]) -> dict:

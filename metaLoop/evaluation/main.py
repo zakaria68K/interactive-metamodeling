@@ -5,7 +5,6 @@ from typing import List, Set
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
-from user_protocols import contains_gold_leakage
 from student_simulator import StudentRoleLLM
 from metaLoop.metamodeling_agent import MetamodelingAgent
 
