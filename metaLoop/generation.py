@@ -58,10 +58,14 @@ def parallel_validate(
     state: State,
     invoke_text: Callable[[str], str],
     invoke_json: Callable[[str], dict],
+    validator_invoke_text: Callable[[str], str] | None = None,
+    validator_invoke_json: Callable[[str], dict] | None = None,
 ) -> State:
+    validation_text = validator_invoke_text or invoke_text
+    validation_json = validator_invoke_json or invoke_json
     with ThreadPoolExecutor(max_workers=2) as executor:
-        sample_model = executor.submit(build_sample_model, state, invoke_text).result()
-        validation = executor.submit(validate_chunk, state, sample_model, invoke_json).result()
+        sample_model = executor.submit(build_sample_model, state, validation_text).result()
+        validation = executor.submit(validate_chunk, state, sample_model, validation_json).result()
     return {"current_sample_model": sample_model, "current_validation": validation}
 
 
@@ -80,7 +84,7 @@ def advance(state: State) -> State:
     max_retries = 3
     valid = bool(state.get("current_validation", {}).get("valid", False))
     human_approved = bool(state.get("human_approved", False))
-    if human_approved:  # if valid and human_approved:
+    if human_approved and valid:
         approved_chunks = [*state.get("approved_chunks", []), state.get("current_chunk", "")]
         next_idx = state.get("current_index", 0) + 1
         done = next_idx >= len(state.get("concepts", []))

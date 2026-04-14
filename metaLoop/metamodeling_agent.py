@@ -20,6 +20,12 @@ class MetamodelingAgent:
     def _invoke_json(self, user_content: str) -> dict:
         return self.llm_client.invoke_json(user_content)
 
+    def _invoke_text_validator(self, user_content: str) -> str:
+        return self.llm_client.invoke_text_validator(user_content)
+
+    def _invoke_json_validator(self, user_content: str) -> dict:
+        return self.llm_client.invoke_json_validator(user_content)
+
     def _gather_intent(self, state: State) -> State:
         return gather_intent(state)
 
@@ -33,7 +39,13 @@ class MetamodelingAgent:
         return generate_chunk(state, self._invoke_text)
 
     def _parallel_validate(self, state: State) -> State:
-        return parallel_validate(state, self._invoke_text, self._invoke_json)
+        return parallel_validate(
+            state,
+            self._invoke_text,
+            self._invoke_json,
+            validator_invoke_text=self._invoke_text_validator,
+            validator_invoke_json=self._invoke_json_validator,
+        )
 
     def _human_validate(self, state: State) -> State:
         return human_validate(state, self._human_validator)

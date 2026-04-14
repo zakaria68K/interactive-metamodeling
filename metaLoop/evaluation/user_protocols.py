@@ -11,8 +11,7 @@ class UserTurnPolicy:
 
 
 class ScriptedUserProtocol:
-    """Deterministic user policy for fair, reproducible evaluations.
-    """
+    """Deterministic user policy for fair, reproducible evaluations."""
 
     def __init__(self, scripted: Dict[str, UserTurnPolicy]):
         self.scripted = scripted
@@ -30,8 +29,7 @@ class ScriptedUserProtocol:
 
 
 class NoviceUserProtocol:
-    """Non-expert protocol that gives generic clarifications only.
-    """
+    """Non-expert protocol that gives generic clarifications only."""
 
     GENERIC_BACKGROUNDS: List[str] = [
         "I only know the basic idea and expected behavior.",
