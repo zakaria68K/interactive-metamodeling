@@ -7,7 +7,7 @@ from langgraph.graph import END, START, StateGraph
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from metaLoop.elicitation import decompose_concepts, gather_intent
-from metaLoop.generation import advance, generate_chunk, human_validate, parallel_validate, router
+from metaLoop.generation import advance, dual_validation, generate_chunk, human_validate, router
 from metaLoop.llm_client import LLMClient
 from metaLoop.state import State
 
@@ -45,8 +45,8 @@ class NoElicitationAgent:
     def _generate_chunk(self, state: State) -> State:
         return generate_chunk(state, self._invoke_text)
 
-    def _parallel_validate(self, state: State) -> State:
-        return parallel_validate(state, self._invoke_text, self._invoke_json)
+    def _dual_validation(self, state: State) -> State:
+        return dual_validation(state, self._invoke_text, self._invoke_json)
 
     def _human_validate(self, state: State) -> State:
         return human_validate(state, self._human_validator)
@@ -62,15 +62,15 @@ class NoElicitationAgent:
         builder.add_node("gather_intent", self._gather_intent)
         builder.add_node("decompose_concepts", self._decompose_concepts)
         builder.add_node("generate_chunk", self._generate_chunk)
-        builder.add_node("parallel_validate", self._parallel_validate)
+        builder.add_node("dual_validation", self._dual_validation)
         builder.add_node("human_validate", self._human_validate)
         builder.add_node("advance", self._advance)
 
         builder.add_edge(START, "gather_intent")
         builder.add_edge("gather_intent", "decompose_concepts")
         builder.add_edge("decompose_concepts", "generate_chunk")
-        builder.add_edge("generate_chunk", "parallel_validate")
-        builder.add_edge("parallel_validate", "human_validate")
+        builder.add_edge("generate_chunk", "dual_validation")
+        builder.add_edge("dual_validation", "human_validate")
         builder.add_edge("human_validate", "advance")
         builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": END})
         return builder.compile()

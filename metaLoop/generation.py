@@ -1,7 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-import re
 from typing import Callable
-
 from .state import State
 
 
@@ -54,10 +52,10 @@ def validate_chunk(state: State, sample_model: str, invoke_json: Callable[[str],
         f"Concept: {state.get('current_concept', '')}\n"
         f"Sample model:\n{sample_model}\n"
         f"Chunk:\n{state.get('current_chunk', '')}"
+        # Add previous validation
     )
 
-
-def parallel_validate(
+def dual_validation(
     state: State,
     invoke_text: Callable[[str], str],
     invoke_json: Callable[[str], dict],

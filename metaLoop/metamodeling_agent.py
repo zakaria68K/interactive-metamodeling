@@ -3,7 +3,7 @@ from typing import Callable
 from langgraph.graph import END, START, StateGraph
 
 from .elicitation import decompose_concepts, gather_intent, knowledge_elicitation
-from .generation import advance, generate_chunk, human_validate, parallel_validate, reconcile_metamodel, router
+from .generation import advance, dual_validation, generate_chunk, human_validate, reconcile_metamodel, router
 from .llm_client import LLMClient
 from .state import State
 
@@ -38,8 +38,8 @@ class MetamodelingAgent:
     def _generate_chunk(self, state: State) -> State:
         return generate_chunk(state, self._invoke_text)
 
-    def _parallel_validate(self, state: State) -> State:
-        return parallel_validate(
+    def _dual_validation(self, state: State) -> State:
+        return dual_validation(
             state,
             self._invoke_text,
             self._invoke_json,
@@ -65,7 +65,7 @@ class MetamodelingAgent:
         builder.add_node("gather_intent", self._gather_intent)
         builder.add_node("decompose_concepts", self._decompose_concepts)
         builder.add_node("generate_chunk", self._generate_chunk)
-        builder.add_node("parallel_validate", self._parallel_validate)
+        builder.add_node("dual_validation", self._dual_validation)
         builder.add_node("human_validate", self._human_validate)
         builder.add_node("advance", self._advance)
         builder.add_node("reconcile", self._reconcile_metamodel)
@@ -73,8 +73,8 @@ class MetamodelingAgent:
         builder.add_edge("gather_intent", "knowledge_elicitation")
         builder.add_edge("knowledge_elicitation", "decompose_concepts")
         builder.add_edge("decompose_concepts", "generate_chunk")
-        builder.add_edge("generate_chunk", "parallel_validate")
-        builder.add_edge("parallel_validate", "human_validate")
+        builder.add_edge("generate_chunk", "dual_validation")
+        builder.add_edge("dual_validation", "human_validate")
         builder.add_edge("human_validate", "advance")
         builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": "reconcile"})
         builder.add_edge("reconcile", END)
