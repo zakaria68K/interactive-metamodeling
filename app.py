@@ -49,8 +49,17 @@ def _run_agent(sess: _Session, prompt: str) -> None:
     def user_responder(question: str, context: dict) -> str:
         # If concepts are proposed, show them in the chat first
         if "proposed_concepts" in context:
-            concepts = context.get("proposed_concepts", [])
-            concepts_text = "\n".join(f"• {c}" for c in concepts)
+            raw = context.get("proposed_concepts_raw")
+            if raw and isinstance(raw, list) and isinstance(raw[0], dict):
+                lines = []
+                for c in raw:
+                    name = c.get("name", "")
+                    desc = c.get("description", "")
+                    lines.append(f"• **{name}**: {desc}" if desc else f"• {name}")
+                concepts_text = "\n".join(lines)
+            else:
+                concepts = context.get("proposed_concepts", [])
+                concepts_text = "\n".join(f"• {c}" for c in concepts)
             sess.chat.append({
                 "role": "assistant",
                 "content": f"**Proposed concepts:**\n{concepts_text}",

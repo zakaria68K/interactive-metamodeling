@@ -84,6 +84,7 @@ def knowledge_elicitation(
                 "stage": "agreement",
                 "user_familiar": user_familiar,
                 "proposed_concepts": concepts,
+                "proposed_concepts_raw": raw if not user_familiar else None,
             },
             ask_user,
         ).lower()
