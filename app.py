@@ -25,6 +25,7 @@ class _Session:
 
         # Final result
         self.result_q: queue.Queue[dict] = queue.Queue()
+        self.final_result: dict | None = None
 
         # UI state
         self.chat: list[dict] = []
@@ -161,17 +162,19 @@ def poll(sid: str):
 
     # Check for finished result
     try:
-        result = sess.result_q.get_nowait()
+        sess.final_result = sess.result_q.get_nowait()
+    except queue.Empty:
+        pass
+
+    if sess.final_result is not None:
         return (
             list(sess.chat),
             gr.update(visible=False),
             gr.update(visible=False),
             gr.update(), gr.update(), gr.update(), gr.update(),
-            gr.update(value=result.get("final_metamodel", "")),
+            gr.update(value=sess.final_result.get("final_metamodel", "")),
             log_text,
         )
-    except queue.Empty:
-        pass
 
     # Approval panel
     if sess.waiting_approval and sess.pending_payload:
