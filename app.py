@@ -9,6 +9,20 @@ from pathlib import Path
 import gradio as gr
 
 from metaLoop.metamodeling_agent import MetamodelingAgent
+from metaLoop.imageGeneration.jjscript_to_image import parse_jjscript, build_svg
+
+
+def _to_svg(jjscript: str, title: str = "JJscript Graph") -> str:
+    text = jjscript.strip()
+    for fence in ("```jjscript", "```python", "```"):
+        text = text.replace(fence, "")
+    text = text.strip()
+    if not text:
+        return ""
+    try:
+        return build_svg(parse_jjscript(text), title=title)
+    except Exception:
+        return f"<pre>{text}</pre>"
 
 class _Session:
     def __init__(self):
@@ -181,7 +195,7 @@ def poll(sid: str):
             gr.update(visible=False),
             gr.update(visible=False),
             gr.update(), gr.update(), gr.update(), gr.update(),
-            gr.update(value=sess.final_result.get("final_metamodel", "")),
+            gr.update(value=_to_svg(sess.final_result.get("final_metamodel", ""), "Final Metamodel")),
             log_text,
         )
 
@@ -193,8 +207,8 @@ def poll(sid: str):
             gr.update(visible=False),
             gr.update(visible=True),
             gr.update(value=p.get("concept", "")),
-            gr.update(value=p.get("chunk", "")),
-            gr.update(value=p.get("sample_model", "")),
+            gr.update(value=_to_svg(p.get("chunk", ""), f"Chunk: {p.get('concept', '')}")),
+            gr.update(value=_to_svg(p.get("sample_model", ""), "Sample Model")),
             gr.update(value=p.get("validation", {})),
             gr.update(),
             log_text,
@@ -268,8 +282,8 @@ with gr.Blocks(title="Interactive Metamodel Generator") as demo:
         gr.Markdown("### ✏️ Review generated chunk — Approve or Reject")
         concept_box = gr.Textbox(label="Concept", interactive=False)
         with gr.Row():
-            chunk_box = gr.Code(label="Generated chunk (JjScript)", language="python", lines=12)
-            sample_box = gr.Code(label="Sample model instance", language="python", lines=12)
+            chunk_box = gr.HTML(label="Generated chunk (JjScript)")
+            sample_box = gr.HTML(label="Sample model instance")
         validation_box = gr.JSON(label="Auto-validation result")
         with gr.Row():
             approve_btn = gr.Button("Approve", variant="primary", scale=1)
@@ -278,12 +292,8 @@ with gr.Blocks(title="Interactive Metamodel Generator") as demo:
     # Progress + output
     with gr.Row():
         log_box = gr.Textbox(label="Progress log", lines=6, interactive=False, scale=2)
-        output_box = gr.Code(
+        output_box = gr.HTML(
             label="Final metamodel (JjScript)",
-            language="python",
-            lines=20,
-            scale=3,
-            interactive=False,
         )
 
     timer = gr.Timer(value=1.0)
