@@ -45,14 +45,22 @@ def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
 
 
 def validate_chunk(state: State, sample_model: str, invoke_json: Callable[[str], dict]) -> dict:
+    prev_validation = state.get("current_validation", {})
+    prev_context = ""
+    if prev_validation:
+        prev_context = f"\nPrevious validation result:\n{prev_validation}\n"
+
     return invoke_json(
-        "Does this chunk correctly cover the concept and represent the sample model?\n\n"
+        "Evaluate whether this metamodel chunk sufficiently covers the breadth of the concept. "
+        "The sample model is just a stress test — minor sample issues are acceptable. "
+        "Focus on whether the chunk captures the essential aspects of the concept. "
+        "Only mark as invalid if the chunk misses major aspects of the concept.\n\n"
         "Reply with raw JSON only, no markdown, no extra text. Keys: "
         "valid (bool), issues (array of strings), suggestion (string).\n\n"
         f"Concept: {state.get('current_concept', '')}\n"
-        f"Sample model:\n{sample_model}\n"
+        f"Sample model (for coverage testing only):\n{sample_model}\n"
         f"Chunk:\n{state.get('current_chunk', '')}"
-        # Add previous validation
+        f"{prev_context}"
     )
 
 def dual_validation(

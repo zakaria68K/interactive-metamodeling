@@ -2,6 +2,7 @@ from typing import Callable
 
 from .state import State
 
+# Depending on the LLM used, the JSON can be malformed, which may cause the proposed concepts section to be skipped.
 
 def gather_intent(state: State) -> State:
     return {"intent_summary": state.get("user_prompt", "")}
