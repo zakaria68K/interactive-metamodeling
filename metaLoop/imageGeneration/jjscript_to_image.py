@@ -59,12 +59,24 @@ REL_RE = re.compile(
     r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\[[^\]]+\])?\s*$"
 )
 CREATE_CLASS_RE = re.compile(r"^\s*create\s+class\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", re.IGNORECASE)
+CREATE_ABSTRACT_CLASS_RE = re.compile(
+    r"^\s*create\s+abstract\s+class\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+extends\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$",
+    re.IGNORECASE,
+)
+CREATE_CLASS_EXTENDS_RE = re.compile(
+    r"^\s*create\s+class\s+([A-Za-z_][A-Za-z0-9_]*)\s+extends\s+([A-Za-z_][A-Za-z0-9_]*)\s*$",
+    re.IGNORECASE,
+)
 CREATE_ATTR_RE = re.compile(
     r"^\s*create\s+attribute\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([^\n#]+?)\s*$",
     re.IGNORECASE,
 )
 CREATE_REF_RE = re.compile(
-    r"^\s*create\s+reference\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([A-Za-z_][A-Za-z0-9_]*)\s*(\[[^\]]+\])?\s*$",
+    r"^\s*create\s+(?:reference|containment)\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([A-Za-z_][A-Za-z0-9_]*)\s*(\[[^\]]+\])?\s*$",
+    re.IGNORECASE,
+)
+CREATE_INSTANCE_RE = re.compile(
+    r"^\s*create\s+instance\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s*$",
     re.IGNORECASE,
 )
 
@@ -92,13 +104,32 @@ def parse_jjscript(text: str) -> Dict[str, ClassNode]:
         if line.lower() == "create":
             continue
 
-        create_class_match = CREATE_CLASS_RE.match(line)
+        create_class_match = CREATE_CLASS_EXTENDS_RE.match(line) or CREATE_CLASS_RE.match(line)
         if create_class_match:
             class_name = create_class_match.group(1)
             current = classes.get(class_name)
             if current is None:
                 current = ClassNode(name=class_name)
                 classes[class_name] = current
+            if create_class_match.lastindex and create_class_match.lastindex >= 2 and create_class_match.group(2):
+                parent = create_class_match.group(2)
+                if parent not in classes:
+                    classes[parent] = ClassNode(name=parent)
+                current.relations.append(Relation(name="extends", target=parent))
+            continue
+
+        create_abstract_match = CREATE_ABSTRACT_CLASS_RE.match(line)
+        if create_abstract_match:
+            class_name = create_abstract_match.group(1)
+            current = classes.get(class_name)
+            if current is None:
+                current = ClassNode(name=class_name)
+                classes[class_name] = current
+            if create_abstract_match.group(2):
+                parent = create_abstract_match.group(2)
+                if parent not in classes:
+                    classes[parent] = ClassNode(name=parent)
+                current.relations.append(Relation(name="extends", target=parent))
             continue
 
         create_attr_match = CREATE_ATTR_RE.match(line)
@@ -127,6 +158,17 @@ def parse_jjscript(text: str) -> Dict[str, ClassNode]:
             current = owner
             continue
 
+        create_instance_match = CREATE_INSTANCE_RE.match(line)
+        if create_instance_match:
+            inst_name = create_instance_match.group(1)
+            owner_name = create_instance_match.group(2)
+            owner = classes.get(owner_name)
+            if owner is None:
+                owner = ClassNode(name=owner_name)
+                classes[owner_name] = owner
+            current = owner
+            continue
+
         class_match = CLASS_RE.match(line)
         if class_match:
             class_name = class_match.group(1)
@@ -137,9 +179,7 @@ def parse_jjscript(text: str) -> Dict[str, ClassNode]:
             continue
 
         if current is None:
-            raise ValueError(
-                f"Line {lineno}: expected a class declaration like 'ClassName:' before members."
-            )
+            continue  # skip unrecognized lines outside a class block
 
         rel_match = REL_RE.match(line)
         if rel_match:
@@ -155,10 +195,7 @@ def parse_jjscript(text: str) -> Dict[str, ClassNode]:
             current.attributes.append((attr_name, attr_type.strip()))
             continue
 
-        raise ValueError(
-            f"Line {lineno}: unsupported syntax '{raw_line.strip()}'. "
-            "Use 'field: Type' or 'relation -> Target [*]'."
-        )
+        # Skip unrecognized lines gracefully
 
     if not classes:
         raise ValueError("No classes parsed from JJscript input.")
