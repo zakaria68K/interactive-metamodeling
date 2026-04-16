@@ -11,3 +11,4 @@ matplotlib
 fastapi
 mcp
 langchain-mcp-adapters
+gradio>=4.44.0

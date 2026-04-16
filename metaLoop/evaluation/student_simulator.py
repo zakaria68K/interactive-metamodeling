@@ -12,8 +12,8 @@ load_dotenv()
 
 class StudentRoleLLM:
     def __init__(self, metamodel_name: str):
-        model_name = os.getenv("EVAL_OLLAMA_MODEL", "gemma4:26b")
-        base_url = os.getenv("EVAL_OLLAMA_BASE_URL", "https://ollama.kher.nl")
+        model_name = os.getenv("EVAL_OLLAMA_MODEL")
+        base_url = os.getenv("EVAL_OLLAMA_BASE_URL")
         llm = ChatOllama(model=model_name, base_url=base_url)
         self.metamodel_name = metamodel_name
         self.history: List[str] = []

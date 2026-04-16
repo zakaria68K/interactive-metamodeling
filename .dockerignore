@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Secrets — NEVER bake into the image
+.env
+
+# Study output data (mounted as a volume at runtime)
+session_logs/
+
+# Version control
+.git/
+.gitignore
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
