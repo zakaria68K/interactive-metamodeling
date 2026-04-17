@@ -16,12 +16,14 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
     approved_text = "\n\n".join(approved_chunks) if approved_chunks else "(none yet)"
 
     feedback = ""
-    if state.get("current_validation") and not state.get("current_validation", {}).get("valid"):
-        issues = state["current_validation"].get("issues", [])
-        suggestion = state["current_validation"].get("suggestion", "")
+    validation = state.get("current_validation", {})
+    human_rejected = state.get("human_approved") is not None and not state.get("human_approved", True)
+    if validation and (not validation.get("valid") or human_rejected):
+        issues = validation.get("issues", [])
+        suggestion = validation.get("suggestion", "")
         issues_text = "\n".join(f"  - {i}" for i in issues)
         feedback = (
-            f"\n\nIMPORTANT — You MUST address this validation feedback from the previous attempt:\n"
+            f"\n\nIMPORTANT — You MUST address this feedback from the previous attempt:\n"
             f"Issues found:\n{issues_text}\n"
             f"Suggested fix: {suggestion}\n"
         )
@@ -54,43 +56,28 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
 
 
 def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
-    """Generate a concrete sample model (M1) in JJScript that tests the cumulative metamodel."""
-    approved = state.get("approved_chunks", [])
-    current = state.get("current_chunk", "")
-    cumulative_metamodel = "\n\n".join([*approved, current])
-
-    concepts = state.get("concepts", [])
-    idx = state.get("current_index", 0)
-    covered_concepts = concepts[: idx + 1]
-
+    """Generate a concrete sample model (M1) in JJScript that challenges the current chunk."""
+    current_chunk = state.get("current_chunk", "")
     prev_sample = state.get("cumulative_sample_model", "")
 
     prompt = (
-        "Generate a CONCRETE SAMPLE MODEL in JJScript that tests the metamodel below.\n\n"
-        "The sample model is an M1-level model — a specific example that conforms to the metamodel.\n"
-        "For example, if the metamodel defines 'State' and 'Transition' metaclasses, "
-        "the sample model should create concrete states like 'RedLight', 'GreenLight' "
-        "and transitions like 'RedToGreen'.\n\n"
-        "Use JJScript syntax: create class, create attribute, create reference, create containment.\n"
-        "Give each class a concrete, domain-specific name (e.g., 'MathCourse' not 'Course1').\n"
-        "Set attribute types to match the metamodel's attribute types.\n"
-        "Create references between concrete classes matching the metamodel's references.\n"
-        "Create 2-3 concrete instances per metaclass to test coverage.\n\n"
-        "Output JJScript code only — no markdown fences, no explanations.\n\n"
+        "Given this metamodel, generate diverse concrete instances (M1) in JJScript "
+        "that CHALLENGE it — try to expose missing attributes, references, or edge cases.\n\n"
+        "Use JJScript syntax (create class, create attribute, create reference).\n"
+        "Give concrete domain-specific names. Create 2-3 instances per metaclass.\n"
+        "Output JJScript only — no markdown, no explanations.\n\n"
     )
 
     if prev_sample:
         prompt += (
-            "IMPORTANT: You must EXTEND the existing sample model below. "
-            "Keep ALL existing classes/instances and ADD new ones for the newly added concept. "
-            "Link new concrete classes to existing ones where the metamodel defines references.\n\n"
-            f"Existing sample model to extend:\n{prev_sample}\n\n"
+            "Extend this existing sample model — keep ALL existing instances, "
+            "add new ones for the current concept.\n\n"
+            f"Existing sample model:\n{prev_sample}\n\n"
         )
 
     prompt += (
-        f"Concepts covered so far: {', '.join(covered_concepts)}\n"
-        f"Current concept being tested: {state.get('current_concept', '')}\n\n"
-        f"Metamodel to test against:\n{cumulative_metamodel}"
+        f"Current concept: {state.get('current_concept', '')}\n\n"
+        f"Cumulative metamodel:\n{current_chunk}"
     )
 
     return invoke_text(prompt)
@@ -119,19 +106,17 @@ def validate_chunk(state: State, sample_model: str, invoke_json: Callable[[str],
         )
 
     return invoke_json(
-        "Evaluate whether this metamodel chunk covers the BREADTH of the concept.\n\n"
-        "The sample model shows diverse instances that COULD exist in this domain. "
-        "Use it to check: does the chunk capture enough variety? "
-        "Are there important aspects of the concept that the chunk cannot represent?\n\n"
-        "Do NOT check conformance of the sample to the chunk. "
-        "The sample is just a coverage probe — ignore minor mismatches.\n"
-        "Mark as invalid ONLY if the chunk misses a major aspect of the concept.\n\n"
+        "The sample model tries to challenge the metamodel chunk by creating diverse instances.\n"
+        "Compare them and identify what the chunk is MISSING.\n\n"
+        "If the sample model exposes aspects the chunk cannot represent, "
+        "propose concrete JJScript improvements (new attributes, references, classes).\n"
+        "Mark as invalid ONLY if major aspects are missing. Minor gaps are acceptable.\n\n"
         "Reply with raw JSON only, no markdown. Keys: "
-        "valid (bool), issues (array of strings), suggestion (string).\n\n"
+        "valid (bool), issues (array of strings), suggestion (string — concrete JJScript fix).\n\n"
         f"Current concept: {state.get('current_concept', '')}\n"
         f"{remaining_note}"
         f"Chunk:\n{current}\n\n"
-        f"Sample instances (for coverage check only):\n{sample_model}"
+        f"Challenging sample model:\n{sample_model}"
         f"{prev_context}"
     )
 
