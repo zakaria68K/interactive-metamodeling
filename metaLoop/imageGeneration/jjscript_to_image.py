@@ -293,7 +293,7 @@ def build_svg(classes: Dict[str, ClassNode], title: str = "JJscript Graph") -> s
     lines: List[str] = []
     lines.append('<?xml version="1.0" encoding="UTF-8"?>')
     lines.append(
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" style="max-width:100%;height:auto;">'
     )
     lines.append("<defs>")
     lines.append(
