@@ -128,6 +128,7 @@ def decompose_concepts(state: State, invoke_json: Callable[[str], dict]) -> Stat
             "current_index": 0,
             "concept_retry_count": 0,
             "approved_chunks": [],
+            "cumulative_sample_model": "",
             "done": False,
         }
 
@@ -152,5 +153,6 @@ def decompose_concepts(state: State, invoke_json: Callable[[str], dict]) -> Stat
         "current_index": 0,
         "concept_retry_count": 0,
         "approved_chunks": [],
+        "cumulative_sample_model": "",
         "done": False,
     }

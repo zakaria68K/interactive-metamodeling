@@ -24,6 +24,7 @@ def _to_svg(jjscript: str, title: str = "JJscript Graph") -> str:
     except Exception:
         return f"<pre>{text}</pre>"
 
+
 class _Session:
     def __init__(self):
         # Elicitation Q&A
@@ -105,6 +106,11 @@ def _run_agent(sess: _Session, prompt: str) -> None:
             user_responder=user_responder,
         )
         sess.log.append(f"[{_ts()}] Pipeline complete.")
+        if result.get("cumulative_sample_model"):
+            sess.chat.append({
+                "role": "assistant",
+                "content": f"**Final Test Instance Model:**\n```\n{result['cumulative_sample_model']}\n```",
+            })
         _save_session(sess, result)
         sess.result_q.put(result)
     except Exception as exc:  # noqa: BLE001
@@ -122,6 +128,8 @@ def _save_session(sess: _Session, result: dict) -> None:
         "chat": sess.chat,
         "concepts": result.get("concepts", []),
         "final_metamodel": result.get("final_metamodel", ""),
+        "final_sample_model": result.get("cumulative_sample_model", ""),
+        "final_validation": result.get("final_validation", {}),
     }
     (out_dir / f"session_{ts}.json").write_text(json.dumps(data, indent=2))
 
@@ -139,6 +147,8 @@ def start(prompt: str, sid: str):
             gr.update(visible=False),
             gr.update(visible=False),
             gr.update(value=""),
+            gr.update(value=""),
+            gr.update(value=None),
             "Enter a prompt first.",
         )
 
@@ -160,6 +170,8 @@ def start(prompt: str, sid: str):
         gr.update(visible=False),
         gr.update(visible=False),
         gr.update(value=""),
+        gr.update(value=""),
+        gr.update(value=None),
         f"[{_ts()}] Pipeline started…",
     )
 
@@ -169,7 +181,7 @@ def poll(sid: str):
     empty = (
         gr.update(), gr.update(), gr.update(),
         gr.update(), gr.update(), gr.update(), gr.update(),
-        gr.update(), gr.update(),
+        gr.update(), gr.update(), gr.update(), gr.update(),
     )
     if not sid or sid not in _sessions:
         return empty
@@ -196,6 +208,8 @@ def poll(sid: str):
             gr.update(visible=False),
             gr.update(), gr.update(), gr.update(), gr.update(),
             gr.update(value=_to_svg(sess.final_result.get("final_metamodel", ""), "Final Metamodel")),
+            gr.update(value=_to_svg(sess.final_result.get("cumulative_sample_model", ""), "Final Sample Model")),
+            gr.update(value=sess.final_result.get("final_validation", {})),
             log_text,
         )
 
@@ -211,6 +225,8 @@ def poll(sid: str):
             gr.update(value=_to_svg(p.get("sample_model", ""), "Sample Model")),
             gr.update(value=p.get("validation", {})),
             gr.update(),
+            gr.update(),
+            gr.update(),
             log_text,
         )
 
@@ -220,6 +236,8 @@ def poll(sid: str):
         gr.update(visible=sess.waiting_elicitation),
         gr.update(visible=False),
         gr.update(), gr.update(), gr.update(), gr.update(),
+        gr.update(),
+        gr.update(),
         gr.update(),
         log_text,
     )
@@ -295,6 +313,10 @@ with gr.Blocks(title="Interactive Metamodel Generator") as demo:
         output_box = gr.HTML(
             label="Final metamodel (JjScript)",
         )
+        final_sample_box = gr.HTML(
+            label="Final sample model",
+        )
+    final_validation_box = gr.JSON(label="Final validation result")
 
     timer = gr.Timer(value=1.0)
 
@@ -306,11 +328,13 @@ with gr.Blocks(title="Interactive Metamodel Generator") as demo:
         answer_row,
         approval_panel,
         output_box,
+        final_sample_box,
+        final_validation_box,
         log_box,
     ]
     POLL_OUTPUTS  = [chatbot, answer_row, approval_panel,
                      concept_box, chunk_box, sample_box, validation_box,
-                     output_box, log_box]
+                     output_box, final_sample_box, final_validation_box, log_box]
 
     # ── wiring ────────────────────────────────────────────────────────────────
     start_btn.click(start, inputs=[prompt_box, sid_state], outputs=START_OUTPUTS)

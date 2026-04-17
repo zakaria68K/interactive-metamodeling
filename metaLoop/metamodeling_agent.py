@@ -57,7 +57,7 @@ class MetamodelingAgent:
         return router(state)
 
     def _reconcile_metamodel(self, state: State) -> State:
-        return reconcile_metamodel(state, self._invoke_text_validator)
+        return reconcile_metamodel(state, self._invoke_text_validator, self._invoke_json_validator)
 
     def create_metamodeling_agent(self):
         builder = StateGraph(State)
