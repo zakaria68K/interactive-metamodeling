@@ -31,6 +31,7 @@ class _Session:
         self.elicit_q: queue.Queue[str] = queue.Queue()
         self.elicit_a: queue.Queue[str] = queue.Queue()
         self.waiting_elicitation: bool = False
+        self.current_elicitation_question: str = ""
 
         # Chunk approval
         self.approval_q: queue.Queue[dict] = queue.Queue()
@@ -52,6 +53,14 @@ _sessions: dict[str, _Session] = {}
 
 def _ts() -> str:
     return datetime.datetime.now().strftime("%H:%M:%S")
+
+
+def _is_yes_no_question(question: str) -> bool:
+    q = (question or "").strip().lower()
+    if not q or "?" not in q:
+        return False
+    markers = ["yes/no", "yes or no", "y/n", "are you", "do you", "is it", "should", "would", "can"]
+    return any(m in q for m in markers)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -83,9 +92,11 @@ def _run_agent(sess: _Session, prompt: str) -> None:
         sess.chat.append({"role": "assistant", "content": question})
         sess.log.append(f"[{_ts()}] Elicitation: {question[:80]}")
         sess.waiting_elicitation = True
+        sess.current_elicitation_question = question
         sess.elicit_q.put(question)
         answer = sess.elicit_a.get(block=True)
         sess.waiting_elicitation = False
+        sess.current_elicitation_question = ""
         sess.chat.append({"role": "user", "content": answer})
         return answer
 
@@ -146,6 +157,7 @@ def start(prompt: str, sid: str):
             "",
             gr.update(visible=False),
             gr.update(visible=False),
+            gr.update(visible=False),
             gr.update(value=""),
             gr.update(value=""),
             gr.update(value=None),
@@ -169,6 +181,7 @@ def start(prompt: str, sid: str):
         "",
         gr.update(visible=False),
         gr.update(visible=False),
+        gr.update(visible=False),
         gr.update(value=""),
         gr.update(value=""),
         gr.update(value=None),
@@ -179,7 +192,7 @@ def start(prompt: str, sid: str):
 def poll(sid: str):
     """Called by gr.Timer every second to refresh all dynamic UI elements."""
     empty = (
-        gr.update(), gr.update(), gr.update(),
+        gr.update(), gr.update(), gr.update(), gr.update(),
         gr.update(), gr.update(), gr.update(), gr.update(),
         gr.update(), gr.update(), gr.update(), gr.update(),
     )
@@ -206,6 +219,7 @@ def poll(sid: str):
             list(sess.chat),
             gr.update(visible=False),
             gr.update(visible=False),
+            gr.update(visible=False),
             gr.update(), gr.update(), gr.update(), gr.update(),
             gr.update(value=_to_svg(sess.final_result.get("final_metamodel", ""), "Final Metamodel")),
             gr.update(value=_to_svg(sess.final_result.get("cumulative_sample_model", ""), "Final Sample Model")),
@@ -219,6 +233,7 @@ def poll(sid: str):
         return (
             list(sess.chat),
             gr.update(visible=False),
+            gr.update(visible=False),
             gr.update(visible=True),
             gr.update(value=p.get("concept", "")),
             gr.update(value=_to_svg(p.get("chunk", ""), f"Chunk: {p.get('concept', '')}")),
@@ -231,9 +246,11 @@ def poll(sid: str):
         )
 
     # Elicitation answer row
+    yes_no = _is_yes_no_question(sess.current_elicitation_question)
     return (
         list(sess.chat),
-        gr.update(visible=sess.waiting_elicitation),
+        gr.update(visible=sess.waiting_elicitation and not yes_no),
+        gr.update(visible=sess.waiting_elicitation and yes_no),
         gr.update(visible=False),
         gr.update(), gr.update(), gr.update(), gr.update(),
         gr.update(),
@@ -246,7 +263,13 @@ def poll(sid: str):
 def submit_answer(answer: str, sid: str):
     if sid in _sessions and answer.strip():
         _sessions[sid].elicit_a.put(answer.strip())
-    return "", gr.update(visible=False)
+    return "", gr.update(visible=False), gr.update(visible=False)
+
+
+def submit_yes_no(answer: str, sid: str):
+    if sid in _sessions:
+        _sessions[sid].elicit_a.put(answer)
+    return gr.update(visible=False), gr.update(visible=False)
 
 
 def approve(sid: str):
@@ -295,6 +318,10 @@ with gr.Blocks(title="Interactive Metamodel Generator") as demo:
         )
         submit_btn = gr.Button("Submit", variant="primary", scale=1)
 
+    with gr.Row(visible=False) as yes_no_row:
+        yes_btn = gr.Button("Yes", variant="primary", scale=1)
+        no_btn = gr.Button("No", variant="secondary", scale=1)
+
     # Chunk approval panel
     with gr.Group(visible=False) as approval_panel:
         gr.Markdown("### ✏️ Review generated chunk — Approve or Reject")
@@ -326,13 +353,14 @@ with gr.Blocks(title="Interactive Metamodel Generator") as demo:
         chatbot,
         answer_box,
         answer_row,
+        yes_no_row,
         approval_panel,
         output_box,
         final_sample_box,
         final_validation_box,
         log_box,
     ]
-    POLL_OUTPUTS  = [chatbot, answer_row, approval_panel,
+    POLL_OUTPUTS  = [chatbot, answer_row, yes_no_row, approval_panel,
                      concept_box, chunk_box, sample_box, validation_box,
                      output_box, final_sample_box, final_validation_box, log_box]
 
@@ -341,8 +369,10 @@ with gr.Blocks(title="Interactive Metamodel Generator") as demo:
 
     timer.tick(poll, inputs=[sid_state], outputs=POLL_OUTPUTS)
 
-    submit_btn.click(submit_answer, inputs=[answer_box, sid_state], outputs=[answer_box, answer_row])
-    answer_box.submit(submit_answer, inputs=[answer_box, sid_state], outputs=[answer_box, answer_row])
+    submit_btn.click(submit_answer, inputs=[answer_box, sid_state], outputs=[answer_box, answer_row, yes_no_row])
+    answer_box.submit(submit_answer, inputs=[answer_box, sid_state], outputs=[answer_box, answer_row, yes_no_row])
+    yes_btn.click(submit_yes_no, inputs=[gr.State("yes"), sid_state], outputs=[answer_row, yes_no_row])
+    no_btn.click(submit_yes_no, inputs=[gr.State("no"), sid_state], outputs=[answer_row, yes_no_row])
 
     approve_btn.click(approve, inputs=[sid_state], outputs=[approval_panel])
     reject_btn.click(reject, inputs=[sid_state], outputs=[approval_panel])
