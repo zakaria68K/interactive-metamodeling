@@ -3,11 +3,12 @@ from typing import Callable
 from langgraph.graph import END, START, StateGraph
 
 from .elicitation import decompose_concepts, gather_intent, knowledge_elicitation
-from .generation import advance, dual_validation, generate_chunk, human_validate, reconcile_metamodel, router
+from .generation import advance, dual_validation, generate_chunk, human_validate, router
 from .llm_client import LLMClient
 from .state import State
 
-# TODO: add the executable validity
+# TODO: add the executable validity, the models don"t reflect the actual intent, we should add few shot examples.
+# ask the user if he want isolated test cases for each chunk, and if the generated sample model is executable and reflects the intent. if not ask for correction and add it to the next iteration prompt.
 class MetamodelingAgent:
     def __init__(self):
         self.llm_client = LLMClient()
@@ -56,8 +57,8 @@ class MetamodelingAgent:
     def _router(self, state: State) -> str:
         return router(state)
 
-    def _reconcile_metamodel(self, state: State) -> State:
-        return reconcile_metamodel(state, self._invoke_text_validator, self._invoke_json_validator)
+    def _finish(self, state: State) -> State:
+        return {}
 
     def create_metamodeling_agent(self):
         builder = StateGraph(State)
@@ -68,7 +69,7 @@ class MetamodelingAgent:
         builder.add_node("dual_validation", self._dual_validation)
         builder.add_node("human_validate", self._human_validate)
         builder.add_node("advance", self._advance)
-        builder.add_node("reconcile", self._reconcile_metamodel)
+        builder.add_node("finish", self._finish)
         builder.add_edge(START, "gather_intent")
         builder.add_edge("gather_intent", "knowledge_elicitation")
         builder.add_edge("knowledge_elicitation", "decompose_concepts")
@@ -76,8 +77,8 @@ class MetamodelingAgent:
         builder.add_edge("generate_chunk", "dual_validation")
         builder.add_edge("dual_validation", "human_validate")
         builder.add_edge("human_validate", "advance")
-        builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": "reconcile"})
-        builder.add_edge("reconcile", END)
+        builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": "finish"})
+        builder.add_edge("finish", END)
         return builder.compile()
 
     def run_iterative(
