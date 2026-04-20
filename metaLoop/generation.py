@@ -63,17 +63,21 @@ def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
     prev_sample = state.get("cumulative_sample_model", "")
 
     prompt = (
-        "Given this metamodel, generate diverse concrete instances (M1) in JJScript "
-        "that CHALLENGE it — try to expose missing attributes, references, or edge cases.\n\n"
-        "Use JJScript syntax (create class, create attribute, create reference).\n"
-        "Give concrete domain-specific names. Create ONE instance.\n"
-        "Output JJScript only — no markdown, no explanations.\n\n"
+        "Given this metamodel, create ONE concrete object instance (M1) in JJScript "
+        "that tries to EXPOSE gaps — use edge cases, unusual combinations, or domain scenarios "
+        "that might require missing attributes or references.\n\n"
+        "RULES:\n"
+        "- Use 'create object <ClassName> <instanceName>' syntax — NOT 'create class'.\n"
+        "- Set concrete domain-specific attribute values.\n"
+        "- Do NOT define new classes or attributes — only instantiate existing ones.\n"
+        "- If something you want to express cannot be represented, note it as a comment (// missing: ...).\n"
+        "- Output JJScript only — no markdown, no explanations.\n\n"
     )
 
     if prev_sample:
         prompt += (
-            "Extend this existing sample model to cover the new chunk. Do NOT repeat instances that only test previously approved chunks. "
-            f"Existing sample model:\n{prev_sample}\n\n"
+            "Add ONE new challenging instance targeting the new concept. Do NOT repeat existing instances.\n"
+            f"Existing sample:\n{prev_sample}\n\n"
         )
 
     prompt += (
