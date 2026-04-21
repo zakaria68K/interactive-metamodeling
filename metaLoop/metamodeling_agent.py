@@ -1,9 +1,10 @@
+
 from typing import Callable
 
 from langgraph.graph import END, START, StateGraph
 
 from .elicitation import decompose_concepts, gather_intent, knowledge_elicitation
-from .generation import advance, dual_validation, generate_chunk, human_validate, router
+from .generation import advance, dual_validation, generate_chunk, human_validate, isolated_validation_step, router
 from .llm_client import LLMClient
 from .state import State
 
@@ -48,6 +49,17 @@ class MetamodelingAgent:
             validator_invoke_json=self._invoke_json_validator,
         )
 
+    def _isolated_validation(self, state: State) -> State:
+        return isolated_validation_step(
+            state,
+            self._invoke_text,
+            self._invoke_json,
+            user_responder=self._user_responder,
+            human_validator=self._human_validator,
+            validator_invoke_text=self._invoke_text_validator,
+            validator_invoke_json=self._invoke_json_validator,
+        )
+
     def _human_validate(self, state: State) -> State:
         return human_validate(state, self._human_validator)
 
@@ -68,6 +80,7 @@ class MetamodelingAgent:
         builder.add_node("generate_chunk", self._generate_chunk)
         builder.add_node("dual_validation", self._dual_validation)
         builder.add_node("human_validate", self._human_validate)
+        builder.add_node("isolated_validation", self._isolated_validation)
         builder.add_node("advance", self._advance)
         builder.add_node("finish", self._finish)
         builder.add_edge(START, "gather_intent")
@@ -76,7 +89,8 @@ class MetamodelingAgent:
         builder.add_edge("decompose_concepts", "generate_chunk")
         builder.add_edge("generate_chunk", "dual_validation")
         builder.add_edge("dual_validation", "human_validate")
-        builder.add_edge("human_validate", "advance")
+        builder.add_edge("human_validate", "isolated_validation")
+        builder.add_edge("isolated_validation", "advance")
         builder.add_conditional_edges("advance", self._router, {"next": "generate_chunk", "end": "finish"})
         builder.add_edge("finish", END)
         return builder.compile()

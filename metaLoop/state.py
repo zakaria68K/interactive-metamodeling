@@ -12,11 +12,17 @@ class State(TypedDict):
     current_concept: str
     current_chunk: str
     current_new_chunk: str
+    current_validated_chunk: str
     current_sample_model: str
+    current_isolated_sample_model: str
     current_validation: dict
+    current_isolated_validation: dict
+    wants_isolated_validation: bool
     human_approved: bool
     approved_chunks: list[str]
     cumulative_sample_model: str
     final_metamodel: str
     final_validation: dict
     done: bool
+
+

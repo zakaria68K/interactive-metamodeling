@@ -15,7 +15,7 @@ load_dotenv()
 
 class LLMClient:
     def __init__(self):
-        openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
         llm = ChatOpenAI(model=openai_model, max_retries=2)
         self.chain = ChatPromptTemplate.from_messages([
             ("system", prompt),
@@ -45,10 +45,11 @@ class LLMClient:
         return response.content if isinstance(response.content, str) else str(response.content)
 
     def invoke_json(self, user_content: str) -> dict:
-        raw = self._extract_json_text(self.invoke_text(user_content))
+        raw_response = self.invoke_text(user_content)
+        raw = self._extract_json_text(raw_response)
         try:
             return json.loads(raw)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             return {}
 
     def invoke_text_validator(self, user_content: str) -> str:
@@ -56,8 +57,9 @@ class LLMClient:
         return response.content if isinstance(response.content, str) else str(response.content)
 
     def invoke_json_validator(self, user_content: str) -> dict:
-        raw = self._extract_json_text(self.invoke_text_validator(user_content))
+        raw_response = self.invoke_text_validator(user_content)
+        raw = self._extract_json_text(raw_response)
         try:
             return json.loads(raw)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             return {}

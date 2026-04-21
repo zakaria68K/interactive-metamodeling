@@ -16,7 +16,6 @@ def _ask_user(
     if responder is None:
         return input(prompt).strip()
     answer = responder(prompt, context)
-    print(f"{prompt}{answer}")
     return str(answer).strip()
 
 
@@ -57,25 +56,17 @@ def knowledge_elicitation(
         )
 
     concepts: list[str] = []
-    for _ in range(3):
+    for attempt in range(3):
         parsed = invoke_json(base_prompt)
         raw = parsed.get("concepts", [])
         if not user_familiar:
             concepts = [c["name"].strip() for c in raw if isinstance(c, dict) and c.get("name", "").strip()]
             if not concepts:
-                break
-            print("\nLLM suggested concepts:")
-            for i, c in enumerate(raw, start=1):
-                print(f"{i}. {c.get('name', '')}")
-                if c.get("description"):
-                    print(f"  {c['description']}")
+                continue
         else:
             concepts = [c.strip() for c in raw if str(c).strip()]
             if not concepts:
-                break
-            print("\nLLM suggested concepts:")
-            for i, c in enumerate(concepts, start=1):
-                print(f"  {i}. {c}")
+                continue
 
         ok = _ask_user(
             "Do you agree with these concepts? [Y/n]: ",
@@ -141,9 +132,6 @@ def decompose_concepts(state: State, invoke_json: Callable[[str], dict]) -> Stat
         f"Request:\n{state.get('intent_summary', '')}"
     )
     concepts = [c.strip() for c in parsed.get("concepts", []) if str(c).strip()]
-    print("\n=== Concepts ===")
-    for c in concepts:
-        print(f"  - {c}")
     if not concepts:
         concepts = [state.get("intent_summary", "")]
     return {
