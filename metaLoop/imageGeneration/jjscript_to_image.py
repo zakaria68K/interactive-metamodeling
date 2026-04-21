@@ -304,6 +304,7 @@ def _compute_layout(
       - metamodel classes on the outer ring
       - instances on the inner ring
     Falls back to a single ring when one group is empty.
+    Uses larger spacing to prevent overlaps with many nodes.
     """
     class_names = sorted(classes.keys())
     inst_names = sorted(instances.keys())
@@ -325,13 +326,16 @@ def _compute_layout(
     if n_c == 0 and n_i == 0:
         return {}
     elif n_c == 0:
-        place_ring(inst_names, max(200.0, 85.0 * n_i))
+        # Increased spacing: 85 → 120 per instance
+        place_ring(inst_names, max(250.0, 120.0 * n_i))
     elif n_i == 0:
-        place_ring(class_names, max(220.0, 90.0 * n_c))
+        # Increased spacing: 90 → 150 per class
+        place_ring(class_names, max(280.0, 150.0 * n_c))
     else:
-        outer_r = max(300.0, 100.0 * n_c)
-        # inner ring must not exceed 55% of outer so nodes don't overlap
-        inner_r = min(max(130.0, 60.0 * n_i), outer_r * 0.52)
+        # Increased spacing: 100 → 160 per class on outer ring
+        outer_r = max(350.0, 160.0 * n_c)
+        # Increased inner spacing: 60 → 100, cap at 50% instead of 52%
+        inner_r = min(max(180.0, 100.0 * n_i), outer_r * 0.50)
         place_ring(class_names, outer_r)
         place_ring(inst_names, inner_r)
 
