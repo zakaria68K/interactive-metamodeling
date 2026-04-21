@@ -15,20 +15,24 @@ load_dotenv()
 
 class LLMClient:
     def __init__(self):
-        openai_model = os.getenv("OPENAI_MODEL", "gpt-5.3-chat-latest")
+        openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         llm = ChatOpenAI(model=openai_model, max_retries=2)
         self.chain = ChatPromptTemplate.from_messages([
             ("system", prompt),
             ("human", "{input}"),
-        ]) | llm
+        ]) |llm
 
-        validator_model = os.getenv("VALIDATOR_MODEL", "gemma4:26b")
-        validator_base_url = os.getenv("VALIDATOR_BASE_URL", "https://ollama.kher.nl")
-        validator_llm = ChatOllama(model=validator_model, base_url=validator_base_url)
+        # validator_model = os.getenv("VALIDATOR_MODEL", "gemma4:26b")
+        # validator_base_url = os.getenv("VALIDATOR_BASE_URL", "https://ollama.kher.nl")
+        # validator_llm = ChatOllama(model=validator_model, base_url=validator_base_url)
+        # self.validator_chain = ChatPromptTemplate.from_messages([
+        #     ("system", prompt),
+        #     ("human", "{input}"),
+        # ]) | validator_llm
         self.validator_chain = ChatPromptTemplate.from_messages([
             ("system", prompt),
             ("human", "{input}"),
-        ]) | validator_llm
+        ]) | llm
 
     @staticmethod
     def _extract_json_text(raw: str) -> str:

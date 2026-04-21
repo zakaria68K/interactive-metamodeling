@@ -20,10 +20,10 @@ def _to_svg(jjscript: str, title: str = "JJscript Graph") -> str:
     if not text:
         return ""
     try:
-        return build_svg(parse_jjscript(text), title=title)
+        classes, instances = parse_jjscript(text)        
+        return build_svg(classes, instances, title=title) 
     except Exception:
         return f"<pre>{text}</pre>"
-
 
 class _Session:
     def __init__(self):
@@ -58,6 +58,9 @@ def _ts() -> str:
 def _is_yes_no_question(question: str) -> bool:
     q = (question or "").strip().lower()
     if not q or "?" not in q:
+        return False
+    # Keep WH-questions as free-text prompts (e.g., "what should be changed?").
+    if q.startswith(("what", "how", "why", "which", "who", "where", "when")):
         return False
     markers = ["yes/no", "yes or no", "y/n", "are you", "do you", "is it", "should", "would", "can"]
     return any(m in q for m in markers)
