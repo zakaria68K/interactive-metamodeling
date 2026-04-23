@@ -26,7 +26,7 @@ def knowledge_elicitation(
 ) -> State:
     intent = state.get("intent_summary", "")
     familiar_answer = _ask_user(
-        "Are you familiar with the domain concepts? [y/N]: ",
+        "Are you familiar with the domain concepts?: ",
         {"intent": intent, "stage": "familiarity"},
         ask_user,
     ).lower()
@@ -69,7 +69,7 @@ def knowledge_elicitation(
                 continue
 
         ok = _ask_user(
-            "Do you agree with these concepts? [Y/n]: ",
+            "Do you agree with these concepts?: ",
             {
                 "intent": intent,
                 "stage": "agreement",

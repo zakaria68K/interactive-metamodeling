@@ -98,7 +98,7 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
         f"Define ONLY the primary '{concept}' class and its direct attributes/references.\n"
         f"EXCLUDE: {other_concepts_str} — do NOT define their classes.\n"
         f"DO NOT REDEFINE: {approved_classes_str} — these exist, only reference them.\n"
-        f"You may reference other classes (e.g., Instructor, Syllabus) but DO NOT define them — they will be added later.\n"
+        f"You may reference other classes but DO NOT define them — they will be added later.\n"
         f"Output ONLY the '{concept}' class definition — nothing else.\n"
     )
     if approved_text:
@@ -323,7 +323,7 @@ def isolated_validation_step(
         return {}
 
     answer = user_responder(
-        "Do you want an isolated validation of the chunk itself? (yes/no)",
+        "Do you want an isolated validation of the chunk itself?",
         {
             "current_concept": state.get("current_concept", ""),
             "validation_stage": "after_human_validate",
@@ -369,7 +369,6 @@ def isolated_validation_step(
         concept = state.get("current_concept", "")
         
         # For isolated view, only show classes that match the concept name
-        # E.g., for "Student" concept, only allow "Student" class, not Instructor/Syllabus
         primary_classes = [cls for cls in chunk_classes if concept.lower() in cls.lower() or cls.lower() in concept.lower()]
         if not primary_classes:
             # Fallback: if no match, just use first class
