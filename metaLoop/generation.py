@@ -290,23 +290,187 @@ def validate_isolated_chunk(state: State, sample_model: str, invoke_json: Callab
     )
 
 
+def build_challenge_sample_model(state: State, invoke_text: Callable[[str], str], challenge_level: str) -> str:
+    """Generate sample model with different complexity levels to challenge the metamodel."""
+    current_chunk = state.get("current_chunk", "")
+    concept = state.get("current_concept", "")
+    
+    base_prompt = f"Create instances for '{concept}' that test the metamodel"
+    
+    if challenge_level == "easy":
+        challenge_prompt = (
+            "Create SIMPLE instances with basic attributes set.\n"
+            "Use straightforward values and minimal relationships.\n"
+            "Test only core functionality of the classes."
+        )
+    elif challenge_level == "moderate":
+        challenge_prompt = (
+            "Create instances with COMPLEX relationships and edge cases.\n"
+            "Use realistic but challenging attribute values.\n"
+            "Test inheritance and reference constraints."
+        )
+    else:  # hard
+        challenge_prompt = (
+            "Create instances that STRESS TEST the metamodel.\n"
+            "Use boundary values, complex hierarchies, and multiple relationships.\n"
+            "Test all possible constraints and edge cases.\n"
+            "Try to find gaps in the metamodel definition."
+        )
+    
+    prompt = (
+        f"{base_prompt}.\n\n{challenge_prompt}\n\n"
+        "CRITICAL: Create ONLY INSTANCES ('create object'), NEVER class definitions.\n"
+        "Use 'create object <ClassName> <name>'.\n"
+        "Set attributes using 'set <attr> of <obj> to <value>'.\n"
+        "Output ONLY raw JJScript commands, nothing else.\n"
+        f"Metamodel:\n{current_chunk}"
+    )
+    
+    sample = invoke_text(prompt)
+    
+    # Clean the sample (same as original build_sample_model)
+    sample_clean = sample
+    for fence in ("```jjscript", "```python", "```"):
+        sample_clean = sample_clean.replace(fence, "")
+    
+    lines = sample_clean.split("\n")
+    code_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if (stripped.startswith("#") or
+            stripped.lower().startswith("create object ") or
+            stripped.lower().startswith("set ") or
+            stripped.lower().startswith("add ")):
+            code_lines.append(line)
+    
+    return "\n".join(code_lines).strip()
+
+
+def analyze_file_content(state: State, invoke_json: Callable[[str], dict]) -> dict:
+    """Analyze attached file content to identify concepts and highlight coverage."""
+    file_content = state.get("attached_file_content", "")
+    if not file_content:
+        return {"analysis": "No file content provided", "missing_concepts": [], "highlighted_positions": {}}
+    
+    concepts = state.get("concepts", [])
+    approved_chunks = state.get("approved_chunks", [])
+    current_chunk = state.get("current_chunk", "")
+    
+    metamodel_content = "\n\n".join([*approved_chunks, current_chunk]) if approved_chunks else current_chunk
+    
+    prompt = (
+        f"Analyze this file content against the metamodel concepts.\n"
+        f"Current concepts being modeled: {', '.join(concepts)}\n\n"
+        f"Current metamodel:\n{metamodel_content}\n\n"
+        f"File content to analyze:\n{file_content}\n\n"
+        "Identify:\n"
+        "1. Which concepts from the metamodel are present in the file\n"
+        "2. What concepts are missing but should be there\n"
+        "3. What new concepts in the file are not covered by the metamodel\n"
+        "4. Provide character positions where each concept appears\n\n"
+        "Return JSON with keys:\n"
+        "- covered_concepts: array of concept names found\n"
+        "- missing_concepts: array of concepts that should be added\n"
+        "- new_concepts: array of concepts found but not in metamodel\n"
+        "- concept_positions: object mapping concept names to arrays of {start, end, text} positions\n"
+        "- coverage_percentage: number (0-100)\n"
+        "- analysis: string summary"
+    )
+    
+    return invoke_json(prompt)
+
+
+def validate_with_file_analysis(state: State, invoke_json: Callable[[str], dict]) -> dict:
+    """Validate metamodel against attached file content analysis."""
+    file_analysis = state.get("file_analysis_validation", {})
+    if not file_analysis:
+        return {"valid": True, "issues": [], "suggestion": "No file analysis available"}
+     
+    missing_concepts = file_analysis.get("missing_concepts", [])
+    coverage_percentage = file_analysis.get("coverage_percentage", 0)
+    
+    issues = []
+    if missing_concepts:
+        issues.append(f"Missing concepts from file: {', '.join(missing_concepts)}")
+    
+    if coverage_percentage < 70:
+        issues.append(f"Low concept coverage: {coverage_percentage}% (should be >70%)")
+    
+    valid = len(issues) == 0
+    
+    suggestion = ""
+    if missing_concepts:
+        suggestion = f"Consider adding these concepts to the metamodel: {', '.join(missing_concepts[:3])}"
+    
+    return {
+        "valid": valid,
+        "issues": issues,
+        "suggestion": suggestion,
+        "file_coverage": coverage_percentage,
+        "missing_from_file": missing_concepts
+    }
+
+
 def dual_validation(
     state: State,
     invoke_text: Callable[[str], str],
     invoke_json: Callable[[str], dict],
     validator_invoke_text: Callable[[str], str] | None = None,
     validator_invoke_json: Callable[[str], dict] | None = None,
+    user_responder: Callable[[str, dict], str] | None = None,
 ) -> State:
     validation_text = validator_invoke_text or invoke_text
     validation_json = validator_invoke_json or invoke_json
-    sample_model = build_sample_model(state, validation_text)
+    
+    # Ask user for challenge level
+    challenge_level = "moderate"  # default
+    if user_responder:
+        challenge_question = (
+            "Choose validation challenge level:\n"
+            "1. Easy - Simple instances with basic attributes\n"
+            "2. Moderate - Complex relationships and realistic values\n"
+            "3. Hard - Stress test with boundary values and edge cases\n"
+            "Which level do you want? (easy/moderate/hard)"
+        )
+        response = user_responder(challenge_question, {"validation_stage": "challenge_selection"})
+        if response.lower() in ["easy", "1"]:
+            challenge_level = "easy"
+        elif response.lower() in ["hard", "3"]:
+            challenge_level = "hard"
+    
+    # Generate challenge-based sample model
+    sample_model = build_challenge_sample_model(state, validation_text, challenge_level)
     validation = validate_chunk(state, sample_model, validation_json)
-
-    return {
+    
+    # Check for file-based validation if file is attached
+    updates = {
         "current_sample_model": sample_model,
         "current_validation": validation,
+        "validation_challenge_level": challenge_level,
         "wants_isolated_validation": False,
     }
+    
+    if state.get("attached_file_content"):
+        file_analysis = analyze_file_content(state, validation_json)
+        file_validation = validate_with_file_analysis(state, validation_json)
+        
+        # Merge validations
+        merged_validation = {
+            "valid": validation.get("valid", False) and file_validation.get("valid", False),
+            "issues": [*validation.get("issues", []), *file_validation.get("issues", [])],
+            "suggestion": f"{validation.get('suggestion', '')}\n\n{file_validation.get('suggestion', '')}".strip(),
+            "challenge_validation": validation,
+            "file_validation": file_validation
+        }
+        
+        updates.update({
+            "current_validation": merged_validation,
+            "file_analysis_validation": file_analysis,
+        })
+    
+    return updates
 
 
 def isolated_validation_step(
@@ -410,6 +574,11 @@ def human_validate(state: State, human_validator: Callable[[dict], bool] | None)
         "sample_model": cumulative_sample_display,  # CUMULATIVE sample (all instances)
         "validation": state.get("current_validation", {}),
     }
+    
+    # Add file analysis if available
+    if state.get("file_analysis_validation"):
+        payload["file_analysis"] = state["file_analysis_validation"]
+    
     approved = human_validator(payload) if human_validator else True
     
     # Still store only the NEW chunk as validated (for accumulation)

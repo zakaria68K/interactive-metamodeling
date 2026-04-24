@@ -24,5 +24,12 @@ class State(TypedDict):
     final_metamodel: str
     final_validation: dict
     done: bool
+    
+    # New validation features
+    validation_challenge_level: str  # "easy", "moderate", "hard"
+    attached_file_content: str
+    file_analysis_validation: dict
+    highlighted_concepts: dict  # {concept: [highlight_positions]}
+    concept_coverage_report: dict
 
 

@@ -4,7 +4,6 @@ import re
 
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from .system_prompt import prompt
@@ -20,15 +19,7 @@ class LLMClient:
         self.chain = ChatPromptTemplate.from_messages([
             ("system", prompt),
             ("human", "{input}"),
-        ]) |llm
-
-        # validator_model = os.getenv("VALIDATOR_MODEL", "gemma4:26b")
-        # validator_base_url = os.getenv("VALIDATOR_BASE_URL", "https://ollama.kher.nl")
-        # validator_llm = ChatOllama(model=validator_model, base_url=validator_base_url)
-        # self.validator_chain = ChatPromptTemplate.from_messages([
-        #     ("system", prompt),
-        #     ("human", "{input}"),
-        # ]) | validator_llm
+        ]) | llm
         self.validator_chain = ChatPromptTemplate.from_messages([
             ("system", prompt),
             ("human", "{input}"),
