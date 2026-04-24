@@ -2,6 +2,19 @@ from typing import Callable
 from .state import State
 import re
 
+_JJSCRIPT_KW = (
+    "create object ", "create class ", "create attribute ",
+    "create reference ", "create containment ", "set ", "add ",
+)
+
+def _clean_jjscript(raw: str) -> str:
+    for fence in ("```jjscript", "```python", "```"):
+        raw = raw.replace(fence, "")
+    return "\n".join(
+        line for line in raw.split("\n")
+        if (s := line.strip()) and (s.startswith("#") or any(s.lower().startswith(k) for k in _JJSCRIPT_KW))
+    ).strip()
+
 
 def _chunk_class_names(chunk: str) -> list[str]:
     return re.findall(r"create\s+(?:abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)", chunk, re.IGNORECASE)
@@ -188,30 +201,7 @@ def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
     )
     sample = invoke_text(prompt)
     
-    # Extract only JJScript code (remove markdown fences and explanatory text)
-    sample_clean = sample
-    for fence in ("```jjscript", "```python", "```"):
-        sample_clean = sample_clean.replace(fence, "")
-    
-    # Only keep lines that are actual JJScript commands or comments
-    lines = sample_clean.split("\n")
-    code_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        # STRICT filter: only keep lines that start with JJScript keywords
-        if (stripped.startswith("#") or
-            stripped.lower().startswith("create object ") or
-            stripped.lower().startswith("create class ") or
-            stripped.lower().startswith("create attribute ") or
-            stripped.lower().startswith("create reference ") or
-            stripped.lower().startswith("create containment ") or
-            stripped.lower().startswith("set ") or
-            stripped.lower().startswith("add ")):
-            code_lines.append(line)
-    
-    sample_code = "\n".join(code_lines).strip()
+    sample_code = _clean_jjscript(sample)
     
     return sample_code
 
@@ -242,27 +232,7 @@ def build_isolated_sample_model(state: State, invoke_text: Callable[[str], str])
     )
     sample = invoke_text(prompt)
     
-    # Extract only JJScript code - use same strict filter as regular samples
-    sample_clean = sample
-    for fence in ("```jjscript", "```python", "```"):
-        sample_clean = sample_clean.replace(fence, "")
-    
-    lines = sample_clean.split("\n")
-    code_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        # STRICT filter: only keep lines that start with JJScript keywords
-        if (stripped.startswith("#") or
-            stripped.lower().startswith("create object ") or
-            stripped.lower().startswith("set ") or
-            stripped.lower().startswith("add ")):
-            code_lines.append(line)
-    
-    sample_code = "\n".join(code_lines).strip()
-    
-    return sample_code
+    return _clean_jjscript(sample)
 
 
 def validate_chunk(state: State, sample_model: str, invoke_json: Callable[[str], dict]) -> dict:
@@ -328,24 +298,7 @@ def build_challenge_sample_model(state: State, invoke_text: Callable[[str], str]
     
     sample = invoke_text(prompt)
     
-    # Clean the sample (same as original build_sample_model)
-    sample_clean = sample
-    for fence in ("```jjscript", "```python", "```"):
-        sample_clean = sample_clean.replace(fence, "")
-    
-    lines = sample_clean.split("\n")
-    code_lines = []
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if (stripped.startswith("#") or
-            stripped.lower().startswith("create object ") or
-            stripped.lower().startswith("set ") or
-            stripped.lower().startswith("add ")):
-            code_lines.append(line)
-    
-    return "\n".join(code_lines).strip()
+    return _clean_jjscript(sample)
 
 
 def analyze_file_content(state: State, invoke_json: Callable[[str], dict]) -> dict:

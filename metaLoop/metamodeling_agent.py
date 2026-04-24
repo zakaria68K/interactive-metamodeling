@@ -15,7 +15,8 @@ class MetamodelingAgent:
         self._human_validator: Callable[[dict], bool] | None = None
         self._user_responder: Callable[[str, dict], str] | None = None
 
-    # ── helpers ───────────────────────────────────────────────────────────────
+    def _set_callbacks(self, hv, ur) -> None:
+        self._human_validator, self._user_responder = hv, ur
 
     def _chunk_nodes(self) -> dict:
         lc, hv, ur = self.llm_client, self._human_validator, self._user_responder
@@ -36,7 +37,7 @@ class MetamodelingAgent:
             "finish":              lambda _: {},
         }
 
-    def _add_chunk_subgraph(self, builder: StateGraph) -> StateGraph:
+    def _add_chunk_subgraph(self, builder: StateGraph) -> StateGraph:                                   
         for name, fn in self._chunk_nodes().items():
             builder.add_node(name, fn)
         builder.add_edge("generate_chunk",      "dual_validation")
@@ -49,7 +50,14 @@ class MetamodelingAgent:
 
     # ── public API ────────────────────────────────────────────────────────────
 
-    def create_metamodeling_agent(self):
+    def run_iterative(
+        self,
+        user_prompt: str,
+        human_validator: Callable[[dict], bool] | None = None,
+        user_responder: Callable[[str, dict], str] | None = None,
+        initial_state: dict | None = None,
+    ) -> dict:
+        self._set_callbacks(human_validator, user_responder)
         lc, ur = self.llm_client, self._user_responder
         builder = StateGraph(State)
         builder.add_node("gather_intent",         gather_intent)
@@ -59,18 +67,8 @@ class MetamodelingAgent:
         builder.add_edge("gather_intent",         "knowledge_elicitation")
         builder.add_edge("knowledge_elicitation", "decompose_concepts")
         builder.add_edge("decompose_concepts",    "generate_chunk")
-        return self._add_chunk_subgraph(builder).compile()
-
-    def run_iterative(
-        self,
-        user_prompt: str,
-        human_validator: Callable[[dict], bool] | None = None,
-        user_responder: Callable[[str, dict], str] | None = None,
-        initial_state: dict | None = None,
-    ) -> dict:
-        self._human_validator = human_validator
-        self._user_responder = user_responder
-        return self.create_metamodeling_agent().invoke({"user_prompt": user_prompt, **(initial_state or {})})
+        graph = self._add_chunk_subgraph(builder).compile()
+        return graph.invoke({"user_prompt": user_prompt, **(initial_state or {})})
 
     def run_extra_concepts(
         self,
@@ -80,8 +78,7 @@ class MetamodelingAgent:
         user_responder: Callable[[str, dict], str] | None = None,
     ) -> dict:
         """Process additional concepts, skipping elicitation/decomposition."""
-        self._human_validator = human_validator
-        self._user_responder = user_responder
+        self._set_callbacks(human_validator, user_responder)
         builder = StateGraph(State)
         builder.add_edge(START, "generate_chunk")
         start_state = {**seed_state, "concepts": extra_concepts,
@@ -93,7 +90,7 @@ class MetamodelingAgent:
         user_prompt: str,
         user_responder: Callable[[str, dict], str] | None = None,
     ) -> dict:
-        self._user_responder = user_responder
+        self._set_callbacks(None, user_responder)
         lc, ur = self.llm_client, self._user_responder
         state: State = {"user_prompt": user_prompt}
         state.update(gather_intent(state))
