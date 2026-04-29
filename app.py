@@ -2,6 +2,7 @@ import datetime
 import html
 import json
 import queue
+import re
 import sys
 import threading
 import uuid
@@ -109,98 +110,166 @@ def _is_yes_no_question(question: str) -> bool:
 # ── Coverage analysis ──────────────────────────────────────────────────────────
 def _run_coverage_analysis(file_content: str, concepts: list[str], metamodel: str) -> dict:
     client = LLMClient()
-    concepts_str = ", ".join(concepts) if concepts else "(none yet)"
+
+    # Deterministically find which concepts are already modeled in the JJScript
+    modeled = re.findall(
+        r"create\s+(?:abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)", metamodel, re.IGNORECASE
+    )
+    modeled_lower = {m.lower() for m in modeled}
+    modeled_str = ", ".join(modeled) if modeled else "(none yet)"
+
+    # Concepts approved/proposed but not yet generated in the metamodel
+    not_yet_modeled = [c for c in concepts if c.lower() not in modeled_lower]
+
     prompt = (
         "You are a domain model analyst.\n\n"
-        f"Metamodel concepts: {concepts_str}\n\n"
+        f"Currently modeled concepts: {modeled_str}\n\n"
         f"Current metamodel:\n{metamodel}\n\n"
         f"Document:\n{file_content}\n\n"
-        "For each sentence in the document that relates to a metamodel concept, "
-        "record it in sentence_highlights with its concept name.\n"
+        "Tasks:\n"
+        "1. For each sentence in the document that relates to a CURRENTLY MODELED concept, "
+        "record it in sentence_highlights with the matching concept name.\n"
+        f"2. Identify domain concepts found in the document that are NOT in this full list: "
+        + (", ".join(concepts) if concepts else "(none)") + "\n\n"
         "Return ONLY valid JSON with these keys:\n"
-        "  covered_concepts: array of concept names present in the document\n"
-        "  missing_concepts: array of concept names NOT found in document\n"
-        "  new_concepts: array of domain concepts in doc but NOT in metamodel\n"
-        "  coverage_percentage: integer 0-100\n"
-        "  sentence_highlights: array of {sentence: string, concept: string}\n"
+        "  sentence_highlights: array of {{sentence: string, concept: string}}\n"
+        "  new_concepts: array of concept names found in doc but NOT in the full list above\n"
+        "  coverage_percentage: integer 0-100 (how much of the doc is covered by modeled concepts)\n"
     )
-    return client.invoke_json(prompt)
+
+    result = client.invoke_json(prompt)
+    result["not_yet_modeled"] = not_yet_modeled
+    result["modeled_concepts"] = modeled
+    return result
 
 
 def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[str]) -> str:
-    missing      = analysis.get("missing_concepts", [])
-    new_concepts = analysis.get("new_concepts", [])
-    coverage_pct = analysis.get("coverage_percentage", 0)
+    not_yet_modeled = analysis.get("not_yet_modeled", [])
+    new_concepts    = analysis.get("new_concepts", [])
+    coverage_pct    = analysis.get("coverage_percentage", 0)
+    modeled         = analysis.get("modeled_concepts", [])
     sentence_highlights = analysis.get("sentence_highlights", [])
 
-    # Green for covered sentences; entire doc background is light yellow for uncovered
-    escaped = html.escape(file_content)
-    for item in sorted(sentence_highlights, key=lambda x: len(x.get("sentence", "")), reverse=True):
+    # Build highlight spans: whitespace-normalised regex match against raw text
+    spans: list[tuple[int, int, str]] = []
+    for item in sentence_highlights:
         sentence = item.get("sentence", "").strip()
         concept  = item.get("concept", "")
         if not sentence:
             continue
-        esc_s = html.escape(sentence)
-        replaced = (
-            f'<mark style="background:#b7f5c0;border-radius:3px;padding:1px 3px;" '
-            f'title="Covered &#8594; {html.escape(concept)}">{esc_s}</mark>'
-        )
-        escaped = escaped.replace(esc_s, replaced, 1)
+        pattern = r"\s+".join(re.escape(w) for w in sentence.split())
+        m = re.search(pattern, file_content, re.IGNORECASE)
+        if m:
+            spans.append((m.start(), m.end(), concept))
 
-    missing_html = "".join(
-        f'<div style="padding:4px 0;color:#c0392b">&#10007; {html.escape(m)}</div>' for m in missing
-    ) if missing else '<div style="color:#27ae60">&#10003; All concepts covered</div>'
-    new_html = "".join(
-        f'<div style="padding:4px 0;color:#2980b9">+ {html.escape(n)}</div>' for n in new_concepts
-    ) if new_concepts else '<div style="color:#888">None detected</div>'
+    spans.sort(key=lambda x: x[0])
+    merged: list[tuple[int, int, str]] = []
+    for span in spans:
+        if merged and span[0] < merged[-1][1]:
+            continue
+        merged.append(span)
+
+    parts: list[str] = []
+    pos = 0
+    for start, end, concept in merged:
+        parts.append(html.escape(file_content[pos:start]))
+        parts.append(
+            f'<mark style="background:#bbf7d0;border-radius:4px;padding:1px 4px;font-weight:500;" '
+            f'title="&#10003; {html.escape(concept)}">'
+            f'{html.escape(file_content[start:end])}</mark>'
+        )
+        pos = end
+    parts.append(html.escape(file_content[pos:]))
+    escaped = "".join(parts)
 
     bar_pct   = min(max(coverage_pct, 0), 100)
-    bar_color = "#27ae60" if bar_pct >= 70 else "#f39c12" if bar_pct >= 40 else "#e74c3c"
+    bar_color = "#22c55e" if bar_pct >= 70 else "#f59e0b" if bar_pct >= 40 else "#ef4444"
+
+    # Modeled chips (green)
+    modeled_chips = "".join(
+        f'<span style="display:inline-block;background:#dcfce7;color:#15803d;border:1px solid #86efac;'
+        f'border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;margin:3px 3px 3px 0">'
+        f'&#10003; {html.escape(c)}</span>'
+        for c in modeled
+    ) if modeled else '<span style="color:#9ca3af;font-size:13px">None modeled yet</span>'
+
+    # Not yet modeled chips (amber)
+    pending_chips = "".join(
+        f'<span style="display:inline-block;background:#fef9c3;color:#92400e;border:1px solid #fcd34d;'
+        f'border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;margin:3px 3px 3px 0">'
+        f'&#9679; {html.escape(c)}</span>'
+        for c in not_yet_modeled
+    ) if not_yet_modeled else '<span style="color:#9ca3af;font-size:13px">All concepts modeled</span>'
+
+    # New concepts chips (blue)
+    new_chips = "".join(
+        f'<span style="display:inline-block;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;'
+        f'border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;margin:3px 3px 3px 0">'
+        f'+ {html.escape(c)}</span>'
+        for c in new_concepts
+    ) if new_concepts else '<span style="color:#9ca3af;font-size:13px">None discovered</span>'
 
     return f"""
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <div style="display:flex;gap:16px;align-items:stretch;margin-bottom:16px;flex-wrap:wrap">
-    <div style="background:#2c3e50;color:white;border-radius:10px;padding:16px 24px;
-                text-align:center;min-width:90px;flex-shrink:0">
-      <div style="font-size:36px;font-weight:700;line-height:1">{coverage_pct}%</div>
-      <div style="font-size:11px;opacity:.75;margin-top:3px">coverage</div>
-      <div style="margin-top:8px;background:rgba(255,255,255,.2);border-radius:4px;height:6px">
-        <div style="background:{bar_color};border-radius:4px;height:6px;width:{bar_pct}%"></div>
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937">
+
+  <!-- Header bar -->
+  <div style="display:flex;align-items:center;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;
+              border-radius:12px;padding:16px 20px;margin-bottom:18px">
+    <div style="text-align:center;min-width:72px">
+      <div style="font-size:38px;font-weight:800;line-height:1;color:{bar_color}">{coverage_pct}%</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;text-transform:uppercase;letter-spacing:.05em">covered</div>
+      <div style="margin-top:6px;background:#e5e7eb;border-radius:99px;height:5px;width:60px;margin-left:auto;margin-right:auto">
+        <div style="background:{bar_color};border-radius:99px;height:5px;width:{bar_pct}%"></div>
       </div>
     </div>
-    <div style="flex:1;min-width:220px;display:flex;flex-direction:column;justify-content:center;gap:10px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="display:inline-block;width:22px;height:14px;background:#b7f5c0;
-                     border-radius:3px;border:1px solid #52c778"></span>
-        <span style="font-size:13px;color:#333">Covered by cumulative metamodel chunks</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="display:inline-block;width:22px;height:14px;background:#fffde7;
-                     border-radius:3px;border:1px solid #ffe082"></span>
-        <span style="font-size:13px;color:#333">Not yet covered — hover green marks for concept name</span>
+    <div style="flex:1">
+      <div style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Legend</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px">
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151">
+          <span style="display:inline-block;width:14px;height:14px;background:#bbf7d0;border-radius:3px;border:1px solid #4ade80"></span>
+          Modeled in current metamodel
+        </span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151">
+          <span style="display:inline-block;width:14px;height:14px;background:#f3f4f6;border-radius:3px;border:1px solid #d1d5db"></span>
+          Not yet covered
+        </span>
       </div>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-    <div style="background:#fff5f5;border:1px solid #fcc;border-radius:8px;padding:12px">
-      <div style="font-weight:700;color:#c0392b;margin-bottom:8px;font-size:13px">&#9888; Metamodel concepts not found in document</div>
-      {missing_html}
+
+  <!-- Concept status cards -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
+
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;
+                  letter-spacing:.07em;margin-bottom:10px">&#10003; Modeled so far</div>
+      <div>{modeled_chips}</div>
     </div>
-    <div style="background:#f0f8ff;border:1px solid #aed6f1;border-radius:8px;padding:12px">
-      <div style="font-weight:700;color:#2980b9;margin-bottom:8px;font-size:13px">&#128161; New domain concepts found in document</div>
-      {new_html}
+
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;
+                  letter-spacing:.07em;margin-bottom:10px">&#9679; Pending modeling</div>
+      <div>{pending_chips}</div>
     </div>
+
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;
+                  letter-spacing:.07em;margin-bottom:10px">+ New in document</div>
+      <div>{new_chips}</div>
+    </div>
+
   </div>
-  <div style="border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
-    <div style="background:#f5f5f5;padding:10px 14px;font-weight:600;font-size:13px;
-                border-bottom:1px solid #e0e0e0;color:#333">
-      Document &mdash;
-      <span style="color:#27ae60;font-weight:700">&#9646; green</span> = covered &nbsp;|&nbsp;
-      <span style="color:#b8860b;font-weight:700">&#9646; yellow</span> = not yet covered
+
+  <!-- Document with highlights -->
+  <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+    <div style="background:#f8fafc;padding:10px 16px;font-size:12px;font-weight:600;color:#6b7280;
+                text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #e2e8f0">
+      Document &mdash; hover <span style="background:#bbf7d0;border-radius:3px;padding:1px 5px;color:#15803d">green</span> passages for concept name
     </div>
-    <div style="max-height:500px;overflow-y:auto;padding:16px;background:#fffde7;
-                line-height:2;white-space:pre-wrap;font-size:13px;color:#333">{escaped}</div>
+    <div style="max-height:480px;overflow-y:auto;padding:18px 20px;background:#ffffff;
+                line-height:1.9;white-space:pre-wrap;font-size:13.5px;color:#374151">{escaped}</div>
   </div>
+
 </div>
 """
 
@@ -502,7 +571,7 @@ def open_coverage(sid: str):
                 sess.attached_file_content, sess.all_concepts, metamodel
             )
             pct  = sess.file_analysis.get("coverage_percentage", 0)
-            miss = len(sess.file_analysis.get("missing_concepts", []))
+            miss = len(sess.file_analysis.get("not_yet_modeled", []))
             sess.log.append(f"[{_ts()}] Coverage: {pct}%, {miss} missing.")
         except Exception as e:
             sess.log.append(f"[{_ts()}] Analysis error: {e}")

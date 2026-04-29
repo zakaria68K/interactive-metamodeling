@@ -305,7 +305,7 @@ def analyze_file_content(state: State, invoke_json: Callable[[str], dict]) -> di
     """Analyze attached file content to identify concepts and highlight coverage."""
     file_content = state.get("attached_file_content", "")
     if not file_content:
-        return {"analysis": "No file content provided", "missing_concepts": [], "highlighted_positions": {}}
+        return {"missing_concepts": [], "new_concepts": []}
     
     concepts = state.get("concepts", [])
     approved_chunks = state.get("approved_chunks", [])
@@ -315,21 +315,12 @@ def analyze_file_content(state: State, invoke_json: Callable[[str], dict]) -> di
     
     prompt = (
         f"Analyze this file content against the metamodel concepts.\n"
-        f"Current concepts being modeled: {', '.join(concepts)}\n\n"
+        f"Current modeled concepts: {', '.join(concepts)}\n\n"
         f"Current metamodel:\n{metamodel_content}\n\n"
-        f"File content to analyze:\n{file_content}\n\n"
-        "Identify:\n"
-        "1. Which concepts from the metamodel are present in the file\n"
-        "2. What concepts are missing but should be there\n"
-        "3. What new concepts in the file are not covered by the metamodel\n"
-        "4. Provide character positions where each concept appears\n\n"
+        f"File content:\n{file_content}\n\n"
         "Return JSON with keys:\n"
-        "- covered_concepts: array of concept names found\n"
-        "- missing_concepts: array of concepts that should be added\n"
-        "- new_concepts: array of concepts found but not in metamodel\n"
-        "- concept_positions: object mapping concept names to arrays of {start, end, text} positions\n"
-        "- coverage_percentage: number (0-100)\n"
-        "- analysis: string summary"
+        "- missing_concepts: array of modeled concept names NOT found in the file\n"
+        "- new_concepts: array of domain concepts found in the file but NOT in the concept list"
     )
     
     return invoke_json(prompt)
@@ -339,30 +330,20 @@ def validate_with_file_analysis(state: State, invoke_json: Callable[[str], dict]
     """Validate metamodel against attached file content analysis."""
     file_analysis = state.get("file_analysis_validation", {})
     if not file_analysis:
-        return {"valid": True, "issues": [], "suggestion": "No file analysis available"}
-     
+        return {"valid": True, "issues": [], "suggestion": ""}
+
     missing_concepts = file_analysis.get("missing_concepts", [])
-    coverage_percentage = file_analysis.get("coverage_percentage", 0)
-    
+
     issues = []
     if missing_concepts:
         issues.append(f"Missing concepts from file: {', '.join(missing_concepts)}")
-    
-    if coverage_percentage < 70:
-        issues.append(f"Low concept coverage: {coverage_percentage}% (should be >70%)")
-    
-    valid = len(issues) == 0
-    
-    suggestion = ""
-    if missing_concepts:
-        suggestion = f"Consider adding these concepts to the metamodel: {', '.join(missing_concepts[:3])}"
-    
+
+    suggestion = f"Consider adding: {', '.join(missing_concepts[:3])}" if missing_concepts else ""
+
     return {
-        "valid": valid,
+        "valid": len(issues) == 0,
         "issues": issues,
         "suggestion": suggestion,
-        "file_coverage": coverage_percentage,
-        "missing_from_file": missing_concepts
     }
 
 
