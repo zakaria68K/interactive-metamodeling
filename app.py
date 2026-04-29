@@ -87,6 +87,7 @@ class _Session:
         self.file_analysis: dict = {}
         self.all_concepts: list[str] = []
         self.extra_concepts: list[str] = []   # queued by user for next agent round
+        self.current_metamodel: str = ""      # latest known metamodel JJScript
 
 
 _sessions: dict[str, _Session] = {}
@@ -322,6 +323,9 @@ def _run_agent(sess: _Session, prompt: str) -> None:
     def human_validator(payload: dict) -> bool:
         sess.log.append(f"[{_ts()}] Review: {payload.get('concept', '')}")
         sess.pending_payload = payload
+        if payload.get("chunk"):
+            sess.current_metamodel = payload["chunk"]
+            sess.file_analysis = {}  # invalidate so next open re-runs with latest metamodel
         sess.waiting_approval = True
         sess.approval_q.put(payload)
         decision = sess.approval_a.get(block=True)
@@ -366,6 +370,9 @@ def _run_agent(sess: _Session, prompt: str) -> None:
                 "role": "assistant",
                 "content": f"**Final instance model:**\n```\n{result['cumulative_sample_model']}\n```",
             })
+        if result.get("final_metamodel"):
+            sess.current_metamodel = result["final_metamodel"]
+            sess.file_analysis = {}
         _save_session(sess, result)
         sess.result_q.put(result)
     except Exception as exc:
@@ -564,7 +571,7 @@ def open_coverage(sid: str):
     yield gr.update(value=_make_overlay(loading_html)), gr.update(choices=[], value=[]), gr.update(visible=False)
 
     if not sess.file_analysis:
-        metamodel = (sess.pending_payload or {}).get("chunk", "")
+        metamodel = sess.current_metamodel or (sess.pending_payload or {}).get("chunk", "")
         sess.log.append(f"[{_ts()}] Analysing coverage...")
         try:
             sess.file_analysis = _run_coverage_analysis(
@@ -712,29 +719,31 @@ with gr.Blocks(title="Metamodel Generator") as demo:
 
                 gr.HTML('<hr style="margin:14px 0;border:none;border-top:1px solid #e0e0e0">')
 
-                gr.Markdown("**Document Coverage Analysis**")
-                with gr.Row(equal_height=True):
-                    file_upload = gr.File(
-                        label="Attach PDF or text",
-                        file_types=[".pdf", ".txt", ".md"],
-                        scale=3,
-                    )
-                    open_cov_btn = gr.Button(
-                        "Open Coverage Report",
-                        variant="secondary", scale=1, min_width=200,
-                        visible=False,
-                    )
-                file_status_lbl = gr.Textbox(
-                    value="", interactive=False, show_label=False, lines=1,
-                    placeholder="Attach a file to analyse coverage...",
-                    max_lines=1,
-                )
-
-                gr.HTML('<hr style="margin:14px 0;border:none;border-top:1px solid #e0e0e0">')
-
                 with gr.Row():
                     approve_btn = gr.Button("Approve", variant="primary", scale=1)
                     reject_btn  = gr.Button("Reject",  variant="stop",    scale=1)
+
+    # Persistent file attachment + coverage — always visible after file is attached
+    with gr.Row():
+        with gr.Column(scale=8):
+            with gr.Row(equal_height=True):
+                file_upload = gr.File(
+                    label="Attach PDF or text for coverage analysis",
+                    file_types=[".pdf", ".txt", ".md"],
+                    scale=4,
+                )
+                open_cov_btn = gr.Button(
+                    "Open Coverage Report",
+                    variant="secondary", scale=1, min_width=200,
+                    visible=False,
+                )
+            file_status_lbl = gr.Textbox(
+                value="", interactive=False, show_label=False, lines=1,
+                placeholder="Attach a file to analyse coverage at any point...",
+                max_lines=1,
+            )
+        with gr.Column(scale=4):
+            pass  # reserved for balance
 
     # Bottom — final result + log
     with gr.Row():
@@ -747,7 +756,7 @@ with gr.Blocks(title="Metamodel Generator") as demo:
 
     coverage_popup_html = gr.HTML(value="", elem_id="coverage-popup-host")
 
-    # Concept picker — shown below the coverage button after analysis, when new concepts exist
+    # Concept picker — shown after analysis when new concepts exist
     with gr.Group(visible=False) as new_concepts_group:
         gr.Markdown("**New domain concepts found in document — select which to add to next iteration:**")
         new_concepts_box = gr.CheckboxGroup(choices=[], label="", interactive=True)
