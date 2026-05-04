@@ -39,7 +39,6 @@ def _to_svg(jjscript: str, title: str = "Graph") -> str:
 
 
 def _read_file(file_obj) -> tuple[str, str]:
-    """Extract text content from a file object. Returns (content, filename)."""
     file_path: str | None = None
     file_name = "file"
 
@@ -86,8 +85,8 @@ class _Session:
         self.attached_file_name: str = ""
         self.file_analysis: dict = {}
         self.all_concepts: list[str] = []
-        self.extra_concepts: list[str] = []   # queued by user for next agent round
-        self.current_metamodel: str = ""      # latest known metamodel JJScript
+        self.extra_concepts: list[str] = []
+        self.current_metamodel: str = ""
 
 
 _sessions: dict[str, _Session] = {}
@@ -112,14 +111,11 @@ def _is_yes_no_question(question: str) -> bool:
 def _run_coverage_analysis(file_content: str, concepts: list[str], metamodel: str) -> dict:
     client = LLMClient()
 
-    # Deterministically find which concepts are already modeled in the JJScript
     modeled = re.findall(
         r"create\s+(?:abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)", metamodel, re.IGNORECASE
     )
     modeled_lower = {m.lower() for m in modeled}
     modeled_str = ", ".join(modeled) if modeled else "(none yet)"
-
-    # Concepts approved/proposed but not yet generated in the metamodel
     not_yet_modeled = [c for c in concepts if c.lower() not in modeled_lower]
 
     prompt = (
@@ -151,7 +147,6 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
     modeled         = analysis.get("modeled_concepts", [])
     sentence_highlights = analysis.get("sentence_highlights", [])
 
-    # Build highlight spans: whitespace-normalised regex match against raw text
     spans: list[tuple[int, int, str]] = []
     for item in sentence_highlights:
         sentence = item.get("sentence", "").strip()
@@ -186,7 +181,6 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
     bar_pct   = min(max(coverage_pct, 0), 100)
     bar_color = "#22c55e" if bar_pct >= 70 else "#f59e0b" if bar_pct >= 40 else "#ef4444"
 
-    # Modeled chips (green)
     modeled_chips = "".join(
         f'<span style="display:inline-block;background:#dcfce7;color:#15803d;border:1px solid #86efac;'
         f'border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;margin:3px 3px 3px 0">'
@@ -194,7 +188,6 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
         for c in modeled
     ) if modeled else '<span style="color:#9ca3af;font-size:13px">None modeled yet</span>'
 
-    # Not yet modeled chips (amber)
     pending_chips = "".join(
         f'<span style="display:inline-block;background:#fef9c3;color:#92400e;border:1px solid #fcd34d;'
         f'border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;margin:3px 3px 3px 0">'
@@ -202,7 +195,6 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
         for c in not_yet_modeled
     ) if not_yet_modeled else '<span style="color:#9ca3af;font-size:13px">All concepts modeled</span>'
 
-    # New concepts chips (blue)
     new_chips = "".join(
         f'<span style="display:inline-block;background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;'
         f'border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;margin:3px 3px 3px 0">'
@@ -212,8 +204,6 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
 
     return f"""
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2937">
-
-  <!-- Header bar -->
   <div style="display:flex;align-items:center;gap:20px;background:#f8fafc;border:1px solid #e2e8f0;
               border-radius:12px;padding:16px 20px;margin-bottom:18px">
     <div style="text-align:center;min-width:72px">
@@ -237,31 +227,20 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
       </div>
     </div>
   </div>
-
-  <!-- Concept status cards -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px">
-
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px">
-      <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;
-                  letter-spacing:.07em;margin-bottom:10px">&#10003; Modeled so far</div>
+      <div style="font-size:11px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">&#10003; Modeled so far</div>
       <div>{modeled_chips}</div>
     </div>
-
     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px">
-      <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;
-                  letter-spacing:.07em;margin-bottom:10px">&#9679; Pending modeling</div>
+      <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">&#9679; Pending modeling</div>
       <div>{pending_chips}</div>
     </div>
-
     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px">
-      <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;
-                  letter-spacing:.07em;margin-bottom:10px">+ New in document</div>
+      <div style="font-size:11px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">+ New in document</div>
       <div>{new_chips}</div>
     </div>
-
   </div>
-
-  <!-- Document with highlights -->
   <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
     <div style="background:#f8fafc;padding:10px 16px;font-size:12px;font-weight:600;color:#6b7280;
                 text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #e2e8f0">
@@ -270,7 +249,6 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
     <div style="max-height:480px;overflow-y:auto;padding:18px 20px;background:#ffffff;
                 line-height:1.9;white-space:pre-wrap;font-size:13.5px;color:#374151">{escaped}</div>
   </div>
-
 </div>
 """
 
@@ -325,7 +303,7 @@ def _run_agent(sess: _Session, prompt: str) -> None:
         sess.pending_payload = payload
         if payload.get("chunk"):
             sess.current_metamodel = payload["chunk"]
-            sess.file_analysis = {}  # invalidate so next open re-runs with latest metamodel
+            sess.file_analysis = {}
         sess.waiting_approval = True
         sess.approval_q.put(payload)
         decision = sess.approval_a.get(block=True)
@@ -346,7 +324,6 @@ def _run_agent(sess: _Session, prompt: str) -> None:
         )
         sess.log.append(f"[{_ts()}] Done.")
 
-        # Process any extra concepts the user queued during the run
         while sess.extra_concepts:
             extra = sess.extra_concepts[:]
             sess.extra_concepts = []
@@ -395,10 +372,8 @@ def _save_session(sess: _Session, result: dict) -> None:
     (out_dir / f"session_{ts}.json").write_text(json.dumps(data, indent=2))
 
 
-# ── Event handlers ─────────────────────────────────────────────────────────────
+# ── Event handlers (ALL LOGIC UNCHANGED) ──────────────────────────────────────
 def start(prompt: str, sid: str):
-    # START_OUTPUTS (10): sid, chatbot, answer_box, answer_row, yes_no_row,
-    #                     challenge_row, approval_panel, output_box, final_validation_box, log_box
     _EMPTY = (sid, [], "", gr.update(visible=False), gr.update(visible=False),
               gr.update(visible=False), gr.update(visible=False),
               gr.update(), gr.update(), "Enter a prompt first.")
@@ -425,9 +400,6 @@ def start(prompt: str, sid: str):
 
 
 def poll(sid: str):
-    # POLL_OUTPUTS (12): chatbot, answer_row, yes_no_row, challenge_row, approval_panel,
-    #                    concept_lbl, chunk_box, sample_box, validation_box,
-    #                    output_box, final_validation_box, log_box
     _noop = tuple(gr.update() for _ in range(12))
     if not sid or sid not in _sessions:
         return _noop
@@ -515,7 +487,6 @@ def reject(sid: str):
 
 
 def attach_file(file_obj, sid: str):
-    """Read file, extract text, store in session. Returns (status_text, open_btn_update)."""
     if not file_obj:
         return "No file selected.", gr.update(visible=False)
     if not sid or sid not in _sessions:
@@ -530,9 +501,10 @@ def attach_file(file_obj, sid: str):
     sess = _sessions[sid]
     sess.attached_file_content = content
     sess.attached_file_name = file_name
-    sess.file_analysis = {}  # reset any previous analysis
+    sess.file_analysis = {}
     sess.log.append(f"[{_ts()}] File attached: {file_name} ({len(content)} chars)")
-    return f"Ready: {file_name}", gr.update(visible=True)
+    return f"✓ {file_name}", gr.update(visible=True)
+
 
 def open_coverage(sid: str):
     def _make_overlay(inner_html: str) -> str:
@@ -603,7 +575,6 @@ def close_coverage():
 
 
 def confirm_add_concepts(selected: list, sid: str):
-    """Queue user-selected new concepts for the next agent round."""
     if not sid or sid not in _sessions:
         return gr.update(choices=[], value=[]), gr.update(visible=False), "No session."
     if not selected:
@@ -612,8 +583,8 @@ def confirm_add_concepts(selected: list, sid: str):
     existing = set(sess.all_concepts)
     added = [c for c in selected if c not in existing]
     sess.all_concepts.extend(added)
-    sess.extra_concepts.extend(added)   # picked up by agent after current run finishes
-    sess.file_analysis = {}              # invalidate cache
+    sess.extra_concepts.extend(added)
+    sess.file_analysis = {}
     msg = (
         f"Queued {len(added)} concept(s) for next iteration: {', '.join(added)}"
         if added else "All selected concepts already in list."
@@ -624,161 +595,416 @@ def confirm_add_concepts(selected: list, sid: str):
 
 # ── CSS ────────────────────────────────────────────────────────────────────────
 CSS = """
-/* Coverage popup: full-screen overlay.
-   NOTE: do NOT set display here — Gradio toggles display:none to hide the group.
-   Position/inset/z-index apply only when Gradio makes it visible. */
-#coverage-popup {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 10000 !important;
-    background: rgba(0,0,0,0.65) !important;
-    overflow-y: auto !important;
-    padding: 40px 16px !important;
-    box-sizing: border-box !important;
+/* ── Global reset ── */
+body, .gradio-container {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
 }
-/* Centre the card inside the overlay */
-#coverage-popup > .gr-group,
-#coverage-popup > div > .gr-group,
-#coverage-popup > div {
-    max-width: 960px !important;
-    margin: 0 auto !important;
-    background: white !important;
-    border-radius: 12px !important;
-    padding: 24px !important;
+
+/* ── App header ── */
+.app-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-/* Approval card styling */
+.app-header-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+.app-header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+    margin: 0 0 1px;
+}
+.app-header-sub {
+    font-size: 12.5px;
+    color: #64748b;
+    margin: 0;
+}
+
+/* ── Input bar ── */
+.input-bar {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* ── Shrink the Gradio file upload to a compact strip ── */
+.file-row .upload-container,
+.file-row .file-preview,
+.file-row .wrap {
+    min-height: 44px !important;
+    max-height: 52px !important;
+    padding: 0 !important;
+}
+.file-row .upload-container .icon-wrap { display: none !important; }
+.file-row .upload-container p { font-size: 12px !important; margin: 0 !important; line-height: 44px !important; }
+.file-row .upload-container .or { display: none !important; }
+
+/* ── Buttons ── */
+#start-btn {
+    min-height: 40px !important;
+    max-height: 44px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 0 22px !important;
+    align-self: flex-end !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+    border: none !important;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.35) !important;
+    transition: opacity .15s !important;
+}
+#start-btn:hover { opacity: .88 !important; }
+
+#cov-btn {
+    min-height: 36px !important;
+    max-height: 40px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 0 14px !important;
+    align-self: center !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+}
+
+/* ── File status ── */
+.file-status textarea {
+    font-size: 12px !important;
+    color: #059669 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 2px 0 0 !important;
+    font-weight: 500 !important;
+}
+
+/* ── Divider ── */
+.input-divider {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 8px 0;
+}
+
+/* ── Main panels ── */
+.chat-panel, .review-panel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* ── Chatbot ── */
+.gradio-chatbot {
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+}
+
+/* ── Review workspace placeholder ── */
+.ws-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 260px;
+    padding: 32px;
+    color: #94a3b8;
+    text-align: center;
+}
+.ws-placeholder-icon {
+    width: 48px; height: 48px;
+    background: #f1f5f9;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px;
+}
+.ws-placeholder-title { font-size: 13px; font-weight: 600; color: #64748b; margin: 0 0 4px; }
+.ws-placeholder-sub { font-size: 12px; color: #94a3b8; margin: 0; }
+
+/* ── Answer input row ── */
+#answer-box textarea {
+    border-radius: 8px !important;
+    font-size: 13.5px !important;
+    border: 1.5px solid #e2e8f0 !important;
+    transition: border-color .15s !important;
+}
+#answer-box textarea:focus { border-color: #2563eb !important; }
+
+/* ── Yes/No and challenge buttons ── */
+.yn-btn, .ch-btn {
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    min-height: 38px !important;
+}
+
+/* ── Approval card ── */
 .approval-card {
-    border: 1px solid #dde2e8 !important;
-    border-radius: 12px !important;
-    padding: 20px !important;
-    background: #fafbfc !important;
+    background: #ffffff !important;
+    border: none !important;
+    border-top: 3px solid #2563eb !important;
+    border-radius: 0 !important;
+    padding: 16px !important;
 }
-/* Keep footer visible so dark/light toggle remains accessible */
+.approval-card .concept-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 12px;
+}
+
+/* ── Approve / Reject ── */
+.approve-btn {
+    background: #16a34a !important;
+    border-color: #16a34a !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    box-shadow: 0 2px 5px rgba(22,163,74,.25) !important;
+}
+.reject-btn {
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+
+/* ── Results tabs ── */
+.results-section {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-top: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+/* ── Answer col padding ── */
+.answer-col { padding: 8px 12px 12px !important; }
+
+/* ── Log ── */
+.log-textarea textarea {
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", monospace !important;
+    font-size: 11.5px !important;
+    color: #475569 !important;
+    background: #f8fafc !important;
+    line-height: 1.6 !important;
+}
+
+/* ── Section labels ── */
+.section-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #94a3b8;
+    padding: 10px 14px 0;
+}
 """
 
 # ── Layout ─────────────────────────────────────────────────────────────────────
 with gr.Blocks(title="Metamodel Generator") as demo:
     sid_state = gr.State("")
 
-    gr.Markdown(
-        "# Metamodel Generator\n"
-        "Describe your software domain — get a JjScript metamodel built concept-by-concept."
-    )
+    # ── Header ────────────────────────────────────────────────────────────────
+    gr.HTML("""
+    <div class="app-header">
+      <div class="app-header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </div>
+      <div>
+        <div class="app-header-title">Metamodel Generator</div>
+        <div class="app-header-sub">Describe your software domain — get a JjScript metamodel built concept-by-concept through guided elicitation.</div>
+      </div>
+    </div>
+    """)
 
-    # Prompt bar
-    with gr.Row():
-        prompt_box = gr.Textbox(
-            placeholder="e.g. A university course management system",
-            label="Domain", scale=7, lines=1,
-        )
-        start_btn = gr.Button("Start", variant="primary", scale=1, min_width=110)
+    # ── Input bar ─────────────────────────────────────────────────────────────
+    with gr.Group(elem_classes="input-bar"):
+        # Row 1: prompt + start
+        with gr.Row(equal_height=True):
+            prompt_box = gr.Textbox(
+                placeholder="e.g. A university course management system",
+                label="Domain prompt",
+                scale=8, lines=1,
+            )
+            start_btn = gr.Button("▶ Start", variant="primary", scale=1,
+                                  min_width=100, elem_id="start-btn", size="sm")
 
-    # Two-column main area
+        gr.HTML('<hr class="input-divider">')
+
+        # Row 2: compact file upload + coverage button + status
+        with gr.Row(equal_height=True, elem_classes="file-row"):
+            file_upload = gr.File(
+                label="Attach file for coverage analysis (PDF / TXT / MD)",
+                file_types=[".pdf", ".txt", ".md"],
+                scale=6,
+                height=52,
+            )
+            with gr.Column(scale=1, min_width=140):
+                open_cov_btn = gr.Button(
+                    "📊 Coverage Report",
+                    variant="secondary", visible=False,
+                    elem_id="cov-btn", size="sm",
+                )
+                file_status_lbl = gr.Textbox(
+                    value="", interactive=False, show_label=False, lines=1,
+                    placeholder="No file attached",
+                    max_lines=1, elem_classes="file-status",
+                )
+
+    # ── Main workspace ────────────────────────────────────────────────────────
     with gr.Row(equal_height=False):
 
         # LEFT — conversation
-        with gr.Column(scale=4):
+        with gr.Column(scale=5, elem_classes="chat-panel"):
+            gr.HTML('<div class="section-label">Conversation</div>')
             chatbot = gr.Chatbot(
-                label="", height=460,
+                label="",
+                height=460,
                 show_label=False,
-                placeholder="Enter a domain above and click Start",
+                placeholder="Enter a domain prompt above and click ▶ Start",
+                elem_classes="gradio-chatbot",
             )
-            with gr.Row(visible=False) as answer_row:
-                answer_box = gr.Textbox(
-                    placeholder="Type your answer and press Enter...",
-                    label="", scale=5, lines=1, show_label=False,
-                )
-                submit_btn = gr.Button("Send", variant="primary", scale=1, min_width=70)
 
-            with gr.Row(visible=False) as yes_no_row:
-                yes_btn = gr.Button("Yes", variant="primary",   scale=1)
-                no_btn  = gr.Button("No",  variant="secondary", scale=1)
+            with gr.Column(elem_classes="answer-col"):
+                with gr.Row(visible=False) as answer_row:
+                    answer_box = gr.Textbox(
+                        placeholder="Type your answer…",
+                        label="", scale=5, lines=1,
+                        show_label=False, container=False,
+                        elem_id="answer-box",
+                    )
+                    submit_btn = gr.Button("Send ↵", variant="primary", scale=1,
+                                          min_width=70, size="sm")
 
-            with gr.Row(visible=False) as challenge_row:
-                gr.Markdown("**Challenge level:**")
-                ch_easy_btn = gr.Button("Easy",     variant="secondary", scale=1)
-                ch_mod_btn  = gr.Button("Moderate", variant="primary",   scale=1)
-                ch_hard_btn = gr.Button("Hard",     variant="stop",      scale=1)
+                with gr.Row(visible=False) as yes_no_row:
+                    yes_btn = gr.Button("✓ Yes", variant="primary",   scale=1,
+                                        size="sm", elem_classes="yn-btn")
+                    no_btn  = gr.Button("✗ No",  variant="secondary", scale=1,
+                                        size="sm", elem_classes="yn-btn")
 
-        # RIGHT — approval panel (hidden until chunk is ready)
-        with gr.Column(scale=6):
+                with gr.Row(visible=False) as challenge_row:
+                    gr.Markdown("**Challenge level:**", elem_classes="section-label")
+                    ch_easy_btn = gr.Button("Easy",     variant="secondary", scale=1,
+                                            size="sm", elem_classes="ch-btn")
+                    ch_mod_btn  = gr.Button("Moderate", variant="primary",   scale=1,
+                                            size="sm", elem_classes="ch-btn")
+                    ch_hard_btn = gr.Button("Hard",     variant="stop",      scale=1,
+                                            size="sm", elem_classes="ch-btn")
+
+        # RIGHT — review workspace
+        with gr.Column(scale=7, elem_classes="review-panel"):
+            gr.HTML('<div class="section-label">Review Workspace</div>')
+
+            gr.HTML("""
+            <div class="ws-placeholder">
+              <div class="ws-placeholder-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+              </div>
+              <div class="ws-placeholder-title">Waiting for concepts</div>
+              <div class="ws-placeholder-sub">Metamodel chunks will appear here for approval once the agent proposes them.</div>
+            </div>
+            """)
+
             with gr.Group(visible=False, elem_classes="approval-card") as approval_panel:
-
                 concept_lbl = gr.Markdown("**Concept**")
+                gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0 14px">')
 
                 with gr.Row(equal_height=True):
                     with gr.Column():
-                        gr.Markdown("**Metamodel chunk**")
+                        gr.Markdown("##### Metamodel chunk")
                         chunk_box = gr.HTML()
                     with gr.Column():
-                        gr.Markdown("**Sample instance**")
+                        gr.Markdown("##### Sample instance")
                         sample_box = gr.HTML()
 
                 with gr.Accordion("Auto-validation details", open=False):
                     validation_box = gr.JSON(show_label=False)
 
-                gr.HTML('<hr style="margin:14px 0;border:none;border-top:1px solid #e0e0e0">')
+                gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0 10px">')
 
                 with gr.Row():
-                    approve_btn = gr.Button("Approve", variant="primary", scale=1)
-                    reject_btn  = gr.Button("Reject",  variant="stop",    scale=1)
+                    approve_btn = gr.Button("✓ Approve", variant="primary", scale=1,
+                                            elem_classes="approve-btn")
+                    reject_btn  = gr.Button("✗ Reject",  variant="stop",    scale=1,
+                                            elem_classes="reject-btn")
 
-    # Persistent file attachment + coverage — always visible after file is attached
-    with gr.Row():
-        with gr.Column(scale=8):
-            with gr.Row(equal_height=True):
-                file_upload = gr.File(
-                    label="Attach PDF or text for coverage analysis",
-                    file_types=[".pdf", ".txt", ".md"],
-                    scale=4,
+    # ── Results (tabbed) ──────────────────────────────────────────────────────
+    with gr.Group(elem_classes="results-section"):
+        with gr.Tabs():
+            with gr.TabItem("📐 Final Metamodel"):
+                with gr.Row():
+                    with gr.Column(scale=7):
+                        output_box = gr.HTML(label="Final metamodel")
+                    with gr.Column(scale=3):
+                        final_validation_box = gr.JSON(label="Validation report", open=False)
+
+            with gr.TabItem("📋 Activity Log"):
+                log_box = gr.Textbox(
+                    label="", lines=14, max_lines=16, interactive=False,
+                    elem_classes="log-textarea",
+                    placeholder="Session log will appear here once started…",
                 )
-                open_cov_btn = gr.Button(
-                    "Open Coverage Report",
-                    variant="secondary", scale=1, min_width=200,
-                    visible=False,
-                )
-            file_status_lbl = gr.Textbox(
-                value="", interactive=False, show_label=False, lines=1,
-                placeholder="Attach a file to analyse coverage at any point...",
-                max_lines=1,
-            )
-        with gr.Column(scale=4):
-            pass  # reserved for balance
 
-    # Bottom — final result + log
-    with gr.Row():
-        with gr.Column(scale=5):
-            output_box = gr.HTML(label="Final metamodel")
-        with gr.Column(scale=3):
-            final_validation_box = gr.JSON(label="Final validation", open=False)
-        with gr.Column(scale=2):
-            log_box = gr.Textbox(label="Log", lines=10, max_lines=10, interactive=False)
-
+    # ── Hidden / overlay elements ─────────────────────────────────────────────
     coverage_popup_html = gr.HTML(value="", elem_id="coverage-popup-host")
 
-    # Concept picker — shown after analysis when new concepts exist
     with gr.Group(visible=False) as new_concepts_group:
-        gr.Markdown("**New domain concepts found in document — select which to add to next iteration:**")
+        gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">')
+        gr.Markdown("**New domain concepts found — select which to add to the next iteration:**")
         new_concepts_box = gr.CheckboxGroup(choices=[], label="", interactive=True)
-        confirm_add_btn  = gr.Button("Queue selected for next iteration", variant="primary", scale=0)
-
+        confirm_add_btn  = gr.Button("Queue selected for next iteration",
+                                     variant="primary", scale=0, size="sm")
 
     timer = gr.Timer(value=1.0)
 
-    # Output lists
+    # ── Output lists ──────────────────────────────────────────────────────────
     START_OUTPUTS = [
         sid_state, chatbot, answer_box,
         answer_row, yes_no_row, challenge_row, approval_panel,
         output_box, final_validation_box, log_box,
-    ]  # 10 items
+    ]
 
     POLL_OUTPUTS = [
         chatbot,
         answer_row, yes_no_row, challenge_row, approval_panel,
         concept_lbl, chunk_box, sample_box, validation_box,
         output_box, final_validation_box, log_box,
-    ]  # 12 items
-    # Wiring
+    ]
+
+    # ── Wiring (ALL UNCHANGED) ─────────────────────────────────────────────────
     start_btn.click(start, [prompt_box, sid_state], START_OUTPUTS)
     timer.tick(poll, [sid_state], POLL_OUTPUTS)
 
