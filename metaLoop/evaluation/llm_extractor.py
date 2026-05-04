@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import sys
 
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,16 +14,16 @@ load_dotenv()
 
 class ConceptExtractor:
     def __init__(self):
-        model_name = os.getenv("OPENAI_MODEL", "gpt-5.3-chat-latest")
+        model_name = os.getenv("EVAL_SYSTEM_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
         llm = ChatOpenAI(model=model_name, max_retries=2)
         self.chain = ChatPromptTemplate.from_messages([
             (
                 "system",
                 "Extract concepts from metamodel text and return strict raw JSON only. "
-                "Format: {\"concepts\": [\"...\", \"...\"]}. "
+                "Format: {{\"concepts\": [\"...\", \"...\"]}}. "
                 "One-shot example:\n"
                 "metamodel: 'StateMachine'\n"
-                "Output: {\"concepts\":[\"State\",\"Transition\"]}",
+                "Output: {{\"concepts\":[\"State\",\"Transition\"]}}",
             ),
             ("human", "{input}"),
         ]) | llm

@@ -4,6 +4,10 @@ from .state import State
 
 # Depending on the LLM used, the JSON can be malformed, which may cause the proposed concepts section to be skipped.
 
+
+def _normalize_yes_no(answer: str) -> str:
+    return str(answer).strip().lower().rstrip(".?!")
+
 def gather_intent(state: State) -> State:
     return {"intent_summary": state.get("user_prompt", "")}
 
@@ -29,7 +33,8 @@ def knowledge_elicitation(
         "Are you familiar with the domain concepts?: ",
         {"intent": intent, "stage": "familiarity"},
         ask_user,
-    ).lower()
+    )
+    familiar_answer = _normalize_yes_no(familiar_answer)
     user_familiar = familiar_answer in {"y", "yes"}
 
     if not user_familiar:
@@ -78,7 +83,8 @@ def knowledge_elicitation(
                 "proposed_concepts_raw": raw if not user_familiar else None,
             },
             ask_user,
-        ).lower()
+        )
+        ok = _normalize_yes_no(ok)
         if ok in {"", "y", "yes"}:
             return {"user_familiar": user_familiar, "concepts": concepts}
         feedback = _ask_user(

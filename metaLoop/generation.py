@@ -417,6 +417,9 @@ def isolated_validation_step(
     validator_invoke_json: Callable[[str], dict] | None = None,
 ) -> State:
     """After human sees the normal validation, optionally run isolated validation."""
+    if state.get("skip_isolated_validation"):
+        return {"wants_isolated_validation": False}
+
     if state.get("current_index", 0) == 0 or not user_responder:
         return {}
 

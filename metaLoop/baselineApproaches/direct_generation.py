@@ -15,7 +15,7 @@ load_dotenv()
 
 
 def generate_direct(user_prompt: str) -> str:
-    model_name = os.getenv("OPENAI_MODEL", "gpt-5.3-chat-latest")
+    model_name = os.getenv("EVAL_SYSTEM_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     llm = ChatOpenAI(model=model_name, max_retries=2)
     chain = ChatPromptTemplate.from_messages([
         ("system", prompt),

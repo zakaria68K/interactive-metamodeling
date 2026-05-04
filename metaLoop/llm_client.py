@@ -14,7 +14,7 @@ load_dotenv()
 
 class LLMClient:
     def __init__(self):
-        openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+        openai_model = os.getenv("EVAL_SYSTEM_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
         llm = ChatOpenAI(model=openai_model, max_retries=2)
         self.chain = self.validator_chain = ChatPromptTemplate.from_messages([
             ("system", prompt),
