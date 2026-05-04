@@ -15,6 +15,7 @@ class SimulatedUserProfile:
     prompt: str
     goal: str
     target_concepts: list[str]
+    sample_file_path: str | None = None
     model_name: str | None = None
 
 
@@ -64,6 +65,14 @@ class ProfileUserLLM:
             answer = "no"
         elif stage == "agreement":
             answer = "yes" if target.issubset(proposed) else "no"
+        elif context.get("validation_stage") == "file_new_concepts_selection":
+            suggested = {
+                str(concept).strip().lower()
+                for concept in context.get("new_concepts", [])
+                if str(concept).strip()
+            }
+            selected = [concept for concept in self.profile.target_concepts if concept.strip().lower() in suggested]
+            answer = ", ".join(selected) if selected else "none"
         else:
             response = self.chain.invoke(
                 {

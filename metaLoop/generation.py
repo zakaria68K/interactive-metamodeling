@@ -347,6 +347,42 @@ def validate_with_file_analysis(state: State, invoke_json: Callable[[str], dict]
     }
 
 
+def select_file_new_concepts(
+    state: State,
+    user_responder: Callable[[str, dict], str] | None,
+    file_analysis: dict,
+) -> list[str]:
+    if not user_responder:
+        return []
+
+    new_concepts = [
+        str(concept).strip()
+        for concept in file_analysis.get("new_concepts", [])
+        if str(concept).strip()
+    ]
+    if not new_concepts:
+        return []
+
+    answer = user_responder(
+        "The attached file suggests these new concepts: "
+        + ", ".join(new_concepts)
+        + ". Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        {
+            "validation_stage": "file_new_concepts_selection",
+            "current_concept": state.get("current_concept", ""),
+            "new_concepts": new_concepts,
+            "existing_concepts": state.get("concepts", []),
+        },
+    )
+
+    requested = {
+        item.strip().lower()
+        for item in str(answer).split(",")
+        if item.strip() and item.strip().lower() != "none"
+    }
+    return [concept for concept in new_concepts if concept.lower() in requested]
+
+
 def dual_validation(
     state: State,
     invoke_text: Callable[[str], str],
@@ -389,6 +425,7 @@ def dual_validation(
     if state.get("attached_file_content"):
         file_analysis = analyze_file_content(state, validation_json)
         file_validation = validate_with_file_analysis(state, validation_json)
+        selected_new_concepts = select_file_new_concepts(state, user_responder, file_analysis)
         
         # Merge validations
         merged_validation = {
@@ -402,6 +439,7 @@ def dual_validation(
         updates.update({
             "current_validation": merged_validation,
             "file_analysis_validation": file_analysis,
+            "selected_file_new_concepts": selected_new_concepts,
         })
     
     return updates
@@ -533,8 +571,14 @@ def advance(state: State) -> State:
     if human_approved:
         validated_chunk = state.get("current_validated_chunk", state.get("current_new_chunk", state.get("current_chunk", "")))
         approved_chunks = [*state.get("approved_chunks", []), validated_chunk]
+        existing_concepts = list(state.get("concepts", []))
+        selected_file_new_concepts = [
+            concept for concept in state.get("selected_file_new_concepts", [])
+            if concept not in existing_concepts
+        ]
+        updated_concepts = [*existing_concepts, *selected_file_new_concepts]
         next_idx = state.get("current_index", 0) + 1
-        done = next_idx >= len(state.get("concepts", []))
+        done = next_idx >= len(updated_concepts)
         
         # Build cumulative sample: append new sample to previous samples
         new_sample = state.get("current_sample_model", "")
@@ -546,11 +590,13 @@ def advance(state: State) -> State:
             cumulative_sample = new_sample
         
         return {
+            "concepts": updated_concepts,
             "approved_chunks": approved_chunks,
             "current_index": next_idx,
             "concept_retry_count": 0,
             "done": done,
             "cumulative_sample_model": cumulative_sample,
+            "selected_file_new_concepts": [],
             "final_metamodel": "\n\n".join(approved_chunks) if done else "",
         }
 
@@ -562,10 +608,11 @@ def advance(state: State) -> State:
             "current_index": next_idx,
             "concept_retry_count": 0,
             "done": done,
+            "selected_file_new_concepts": [],
             "final_metamodel": "\n\n".join(state.get("approved_chunks", [])) if done else "",
         }
 
-    return {"concept_retry_count": retry_count}
+    return {"concept_retry_count": retry_count, "selected_file_new_concepts": []}
 
 
 def router(state: State) -> str:

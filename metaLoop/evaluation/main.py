@@ -8,7 +8,7 @@ from typing import Callable, List, Set
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
-
+from pypdf import PdfReader
 from metaLoop.baselineApproaches.direct_generation import generate_direct
 from metaLoop.elicitation import decompose_concepts, gather_intent
 from metaLoop.evaluation.llm_extractor import ConceptExtractor
@@ -23,8 +23,6 @@ class MethodResult:
     precision: float
     recall: float
     f1: float
-    leakage: Set[str]
-    exact_hit: bool
     transcript: list[dict[str, str]]
 
 
@@ -43,19 +41,42 @@ def precision_recall_f1(expected: Set[str], predicted: Set[str]) -> tuple[float,
     return precision, recall, f1
 
 
-def evaluate_prediction(target: Set[str], predicted: Set[str], universe: Set[str]) -> tuple[float, float, float, Set[str]]:
+def evaluate_prediction(target: Set[str], predicted: Set[str], universe: Set[str]) -> tuple[float, float, float]:
     precision, recall, f1 = precision_recall_f1(target, predicted)
-    leakage = (predicted & universe) - target
-    return precision, recall, f1, leakage
+    return precision, recall, f1
+
+
+def read_sample_file(file_path: str | None) -> str:
+    if not file_path:
+        return ""
+
+    resolved_path = Path(file_path)
+    if not resolved_path.is_absolute():
+        resolved_path = (ROOT / resolved_path).resolve()
+
+    if resolved_path.suffix.lower() == ".pdf":
+
+
+        reader = PdfReader(str(resolved_path))
+        return "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    return resolved_path.read_text(encoding="utf-8", errors="ignore")
 
 
 def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, universe: Set[str]) -> MethodResult:
     user_llm = ProfileUserLLM(profile)
-    result = agent.run_concepts_only(profile.prompt, user_responder=user_llm.respond)
+    result = agent.run_iterative(
+        profile.prompt,
+        human_validator=lambda _: True,
+        user_responder=user_llm.respond,
+        initial_state={
+            "attached_file_content": read_sample_file(profile.sample_file_path),
+            "skip_isolated_validation": True,
+        },
+    )
     predicted = normalize(result.get("concepts", []))
-    target = normalize(profile.target_concepts)
-    precision, recall, f1, leakage = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
-    return MethodResult("interactive", predicted, precision, recall, f1, leakage, predicted == target, list(user_llm.history))
+    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
+    return MethodResult("interactive", predicted, precision, recall, f1, list(user_llm.history))
 
 
 def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile, universe: Set[str]) -> MethodResult:
@@ -63,32 +84,18 @@ def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile, 
     state.update(gather_intent(state))
     state.update(decompose_concepts(state, agent.llm_client.invoke_json))
     predicted = normalize(state.get("concepts", []))
-    target = normalize(profile.target_concepts)
-    precision, recall, f1, leakage = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
+    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": ""}]
-    return MethodResult("no_elicitation", predicted, precision, recall, f1, leakage, predicted == target, transcript)
+    return MethodResult("no_elicitation", predicted, precision, recall, f1, transcript)
 
 
 def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile, universe: Set[str]) -> MethodResult:
     metamodel_text = generate_direct(profile.prompt)
-    extracted = extractor.extract("State machine", metamodel_text)
+    extracted = extractor.extract(profile.prompt, metamodel_text)
     predicted = normalize(extracted.get("concepts", []))
-    target = normalize(profile.target_concepts)
-    precision, recall, f1, leakage = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
+    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": metamodel_text}]
-    return MethodResult("one_shot", predicted, precision, recall, f1, leakage, predicted == target, transcript)
-
-
-def avg_pairwise_jaccard(concept_sets: List[Set[str]]) -> float:
-    if len(concept_sets) < 2:
-        return 0.0
-    scores: List[float] = []
-    for idx, left in enumerate(concept_sets):
-        for right in concept_sets[idx + 1:]:
-            union = left | right
-            score = (len(left & right) / len(union)) if union else 1.0
-            scores.append(score)
-    return sum(scores) / len(scores)
+    return MethodResult("one_shot", predicted, precision, recall, f1, transcript)
 
 
 def write_report(rows: list[dict]) -> Path:
@@ -107,18 +114,30 @@ def main() -> None:
             prompt="I want a state machine metamodel for interactive applications.",
             goal="Focus on event-driven behavior. The essential concepts are State and Event.",
             target_concepts=["State", "Event"],
+            sample_file_path=os.getenv(
+                "EVAL_SAMPLE_FILE_A",
+                "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
+            ),
         ),
         SimulatedUserProfile(
             profile_id="user_b_hierarchical",
             prompt="I want a state machine metamodel for complex systems.",
             goal="Focus on hierarchical and parallel structure. The essential concepts are State and Region.",
             target_concepts=["State", "Region"],
+            sample_file_path=os.getenv(
+                "EVAL_SAMPLE_FILE_B",
+                "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
+            ),
         ),
         SimulatedUserProfile(
             profile_id="user_c_teaching",
             prompt="I want a state machine metamodel for teaching beginners.",
             goal="Keep the model minimal for teaching. The essential concepts are State and FinalState.",
             target_concepts=["State", "FinalState"],
+            sample_file_path=os.getenv(
+                "EVAL_SAMPLE_FILE_C",
+                "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
+            ),
         ),
     ]
 
@@ -131,11 +150,7 @@ def main() -> None:
         ("one_shot", lambda profile: run_one_shot(extractor, profile, universe)),
     ]
 
-    per_method_run_sets: dict[str, dict[int, List[Set[str]]]] = {
-        name: {run_idx: [] for run_idx in range(1, runs + 1)} for name, _ in methods
-    }
     per_method_f1: dict[str, List[float]] = {name: [] for name, _ in methods}
-    per_method_exact: dict[str, int] = {name: 0 for name, _ in methods}
     report_rows: list[dict] = []
 
     for run_idx in range(1, runs + 1):
@@ -143,43 +158,31 @@ def main() -> None:
         for profile in profiles:
             print(f"\n{profile.profile_id}")
             print(f"Target: {sorted(normalize(profile.target_concepts))}")
+            print(f"Sample file: {profile.sample_file_path or '(none)'}")
             for method_name, runner in methods:
                 result = runner(profile)
-                per_method_run_sets[method_name][run_idx].append(result.concepts)
                 per_method_f1[method_name].append(result.f1)
-                per_method_exact[method_name] += int(result.exact_hit)
                 report_rows.append({
                     "run": run_idx,
                     "profile_id": profile.profile_id,
+                    "sample_file_path": profile.sample_file_path,
                     "method": result.name,
                     "target": sorted(normalize(profile.target_concepts)),
                     "predicted": sorted(result.concepts),
                     "precision": result.precision,
                     "recall": result.recall,
                     "f1": result.f1,
-                    "leakage": sorted(result.leakage),
-                    "exact_hit": result.exact_hit,
                     "transcript": result.transcript,
                 })
                 print(
                     f"{result.name:>14} | predicted={sorted(result.concepts)} "
-                    f"| P={result.precision:.3f} R={result.recall:.3f} F1={result.f1:.3f} "
-                    f"| exact={result.exact_hit} | leakage={sorted(result.leakage)}"
+                    f"| P={result.precision:.3f} R={result.recall:.3f} F1={result.f1:.3f}"
                 )
 
     print("\n=== Summary ===")
     for method_name, _ in methods:
         avg_f1 = sum(per_method_f1[method_name]) / len(per_method_f1[method_name])
-        distinctiveness_scores = [
-            1.0 - avg_pairwise_jaccard(per_method_run_sets[method_name][run_idx])
-            for run_idx in range(1, runs + 1)
-        ]
-        distinctiveness = sum(distinctiveness_scores) / len(distinctiveness_scores)
-        exact_rate = per_method_exact[method_name] / (runs * len(profiles))
-        print(
-            f"{method_name:>14} | avg_f1={avg_f1:.3f} "
-            f"| exact_rate={exact_rate:.3f} | distinctiveness={distinctiveness:.3f}"
-        )
+        print(f"{method_name:>14} | avg_f1={avg_f1:.3f}")
 
     report_path = write_report(report_rows)
     print(f"\nReport: {report_path}")

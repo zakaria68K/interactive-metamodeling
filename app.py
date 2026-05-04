@@ -867,7 +867,7 @@ with gr.Blocks(title="Metamodel Generator") as demo:
             )
             with gr.Column(scale=1, min_width=140):
                 open_cov_btn = gr.Button(
-                    "📊 Coverage Report",
+                    "Coverage Report",
                     variant="secondary", visible=False,
                     elem_id="cov-btn", size="sm",
                 )

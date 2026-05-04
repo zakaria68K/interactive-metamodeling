@@ -29,6 +29,8 @@ class State(TypedDict):
     validation_challenge_level: str  # "easy", "moderate", "hard"
     attached_file_content: str
     file_analysis_validation: dict
+    selected_file_new_concepts: list[str]
+    skip_isolated_validation: bool
     highlighted_concepts: dict  # {concept: [highlight_positions]}
     concept_coverage_report: dict
 
