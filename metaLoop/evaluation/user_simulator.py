@@ -13,7 +13,6 @@ load_dotenv()
 class SimulatedUserProfile:
     profile_id: str
     prompt: str
-    goal: str
     target_concepts: list[str]
     sample_file_path: str | None = None
     model_name: str | None = None
@@ -29,7 +28,7 @@ class ProfileUserLLM:
             (
                 "system",
                 "You simulate one specific user in a metamodel elicitation conversation. "
-                "Stay consistent with the user's goal. "
+                "Stay consistent with the user's goal."
                 "Answer only with the user's reply text, no explanations, no markdown. "
                 "Keep replies short and natural. "
                 "For familiarity questions, answer yes or no. "
@@ -40,7 +39,6 @@ class ProfileUserLLM:
                 "human",
                 "Profile id: {profile_id}\n"
                 "Domain request: {prompt}\n"
-                "User goal: {goal}\n"
                 "Target concepts: {target_concepts}\n"
                 "Question: {question}\n"
                 "Context: {context}\n"
@@ -78,7 +76,6 @@ class ProfileUserLLM:
                 {
                     "profile_id": self.profile.profile_id,
                     "prompt": self.profile.prompt,
-                    "goal": self.profile.goal,
                     "target_concepts": ", ".join(self.profile.target_concepts),
                     "question": prompt,
                     "context": str(context),

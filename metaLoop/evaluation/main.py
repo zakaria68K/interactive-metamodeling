@@ -41,7 +41,7 @@ def precision_recall_f1(expected: Set[str], predicted: Set[str]) -> tuple[float,
     return precision, recall, f1
 
 
-def evaluate_prediction(target: Set[str], predicted: Set[str], universe: Set[str]) -> tuple[float, float, float]:
+def evaluate_prediction(target: Set[str], predicted: Set[str]) -> tuple[float, float, float]:
     precision, recall, f1 = precision_recall_f1(target, predicted)
     return precision, recall, f1
 
@@ -55,15 +55,13 @@ def read_sample_file(file_path: str | None) -> str:
         resolved_path = (ROOT / resolved_path).resolve()
 
     if resolved_path.suffix.lower() == ".pdf":
-
-
         reader = PdfReader(str(resolved_path))
         return "\n".join(page.extract_text() or "" for page in reader.pages)
 
     return resolved_path.read_text(encoding="utf-8", errors="ignore")
 
 
-def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, universe: Set[str]) -> MethodResult:
+def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, ) -> MethodResult:
     user_llm = ProfileUserLLM(profile)
     result = agent.run_iterative(
         profile.prompt,
@@ -75,25 +73,25 @@ def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, uni
         },
     )
     predicted = normalize(result.get("concepts", []))
-    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
+    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
     return MethodResult("interactive", predicted, precision, recall, f1, list(user_llm.history))
 
 
-def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile, universe: Set[str]) -> MethodResult:
+def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
     state = {"user_prompt": profile.prompt}
     state.update(gather_intent(state))
     state.update(decompose_concepts(state, agent.llm_client.invoke_json))
     predicted = normalize(state.get("concepts", []))
-    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
+    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": ""}]
     return MethodResult("no_elicitation", predicted, precision, recall, f1, transcript)
 
 
-def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile, universe: Set[str]) -> MethodResult:
+def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> MethodResult:
     metamodel_text = generate_direct(profile.prompt)
     extracted = extractor.extract(profile.prompt, metamodel_text)
     predicted = normalize(extracted.get("concepts", []))
-    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted, universe)
+    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": metamodel_text}]
     return MethodResult("one_shot", predicted, precision, recall, f1, transcript)
 
@@ -112,7 +110,6 @@ def main() -> None:
         SimulatedUserProfile(
             profile_id="user_a_event_driven",
             prompt="I want a state machine metamodel for interactive applications.",
-            goal="Focus on event-driven behavior. The essential concepts are State and Event.",
             target_concepts=["State", "Event"],
             sample_file_path=os.getenv(
                 "EVAL_SAMPLE_FILE_A",
@@ -122,7 +119,6 @@ def main() -> None:
         SimulatedUserProfile(
             profile_id="user_b_hierarchical",
             prompt="I want a state machine metamodel for complex systems.",
-            goal="Focus on hierarchical and parallel structure. The essential concepts are State and Region.",
             target_concepts=["State", "Region"],
             sample_file_path=os.getenv(
                 "EVAL_SAMPLE_FILE_B",
@@ -132,7 +128,6 @@ def main() -> None:
         SimulatedUserProfile(
             profile_id="user_c_teaching",
             prompt="I want a state machine metamodel for teaching beginners.",
-            goal="Keep the model minimal for teaching. The essential concepts are State and FinalState.",
             target_concepts=["State", "FinalState"],
             sample_file_path=os.getenv(
                 "EVAL_SAMPLE_FILE_C",
@@ -143,11 +138,11 @@ def main() -> None:
 
     agent = MetamodelingAgent()
     extractor = ConceptExtractor()
-    universe = normalize([concept for profile in profiles for concept in profile.target_concepts])
+
     methods: List[tuple[str, Callable[[SimulatedUserProfile], MethodResult]]] = [
-        ("interactive", lambda profile: run_interactive(agent, profile, universe)),
-        ("no_elicitation", lambda profile: run_no_elicitation(agent, profile, universe)),
-        ("one_shot", lambda profile: run_one_shot(extractor, profile, universe)),
+        ("interactive", lambda profile: run_interactive(agent, profile)),
+        ("no_elicitation", lambda profile: run_no_elicitation(agent, profile)),
+        ("one_shot", lambda profile: run_one_shot(extractor, profile)),
     ]
 
     per_method_f1: dict[str, List[float]] = {name: [] for name, _ in methods}
