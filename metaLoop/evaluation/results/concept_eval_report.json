@@ -10,13 +10,12 @@
     ],
     "predicted": [
       "event",
-      "state"
+      "state",
+      "transition"
     ],
-    "precision": 1.0,
+    "precision": 0.6666666666666666,
     "recall": 1.0,
-    "f1": 1.0,
-    "leakage": [],
-    "exact_hit": true,
+    "f1": 0.8,
     "transcript": [
       {
         "stage": "familiarity",
@@ -26,7 +25,7 @@
       {
         "stage": "background",
         "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that interactive applications often react to user inputs or other events by changing states. States represent different conditions or modes of the application, and events trigger transitions between these states."
+        "answer": "I know that a state machine involves different states and events that trigger transitions between those states."
       },
       {
         "stage": "agreement",
@@ -36,12 +35,17 @@
       {
         "stage": "feedback",
         "question": "What should be changed? ",
-        "answer": "You should include Event as a concept instead of Transition. The focus is on event-driven behavior, so Event is essential along with State."
+        "answer": "You should add Event as a concept, since events trigger transitions in interactive applications."
       },
       {
         "stage": "agreement",
         "question": "Do you agree with these concepts?: ",
         "answer": "yes"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
       },
       {
         "stage": "challenge_selection",
@@ -71,8 +75,6 @@
     "precision": 0.5,
     "recall": 0.5,
     "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
@@ -92,21 +94,19 @@
     ],
     "predicted": [
       "event",
-      "namedelement",
       "state",
       "statemachine",
-      "transition"
+      "transition",
+      "vertex"
     ],
     "precision": 0.4,
     "recall": 1.0,
     "f1": 0.5714285714285715,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
         "question": "I want a state machine metamodel for interactive applications.",
-        "answer": "Great! A state machine metamodel for interactive applications typically includes states, transitions, events that trigger transitions, and possibly actions associated with states or transitions. This will give you a solid structure to model dynamic behaviors.\n\nTo start, I'll create the essential metaclasses: State, Transition, Event, and maybe an abstract base class for NamedElement so we can reuse a name attribute. I'll also set up references so that transitions link source and target states, and events are connected to transitions.\n\nHere is the JjScript to create a basic, clear state machine metamodel for interactive apps:\n\n```jjscript\n# State Machine Metamodel for Interactive Applications\n\n# Abstract base class for elements with a name\ncreate abstract class NamedElement\ncreate attribute name in NamedElement type String\n\n# State metaclass\ncreate class State extends NamedElement\ncreate attribute isInitial in State type boolean\ncreate attribute isFinal in State type boolean\n\n# Event metaclass representing triggers for transitions\ncreate class Event extends NamedElement\n\n# Transition metaclass linking states, triggered by events\ncreate class Transition extends NamedElement\ncreate reference source in Transition type State [1]\ncreate reference target in Transition type State [1]\ncreate reference trigger in Transition type Event [0..1]\n\n# Composition: a state machine owns states and transitions\ncreate class StateMachine extends NamedElement\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\ncreate containment events in StateMachine type Event [0..*]\n```\n\nThis metamodel gives you:\n\n- NamedElements so all core classes can have a name attribute for identification.\n- States with flags for initial and final states.\n- Events that act as triggers for transitions.\n- Transitions pointing to a source and target state and optionally triggered by an event.\n- The StateMachine as the container that owns all states, transitions, and events \u2014 enabling modular organization.\n\nFrom here, you can extend with actions, guards, hierarchical states, or timing constraints. Let me know if you want me to add those or specific constraints like ensuring exactly one initial state!"
+        "answer": "Great choice! A state machine metamodel for interactive applications typically involves representing states, transitions, events, and possibly actions. We can define metaclasses like State, Transition, Event, and maybe an abstract Vertex to generalize State and more (like InitialState or FinalState), if you want to extend further.\n\nI'll create a clean, classical state machine metamodel with these key elements:\n- An abstract Vertex class (a common superclass for states and possibly other nodes)\n- State class\n- Transition class with a source and target Vertex reference\n- Event class to represent triggers causing transitions\n- Attributes like state name and event name\n\nHere's the JjScript code to build this metamodel in Jjodel:\n\n```jjscript\n# State Machine Metamodel for Interactive Applications\n\n# Abstract superclass for all vertices (states, etc.)\ncreate abstract class Vertex\ncreate attribute name in Vertex type String\n\n# Concrete State class extends Vertex\ncreate class State\nState extends Vertex\n\n# Event class representing triggers for transitions\ncreate class Event\ncreate attribute name in Event type String\n\n# Transition class relating source and target vertices with an event trigger\ncreate class Transition\ncreate reference source in Transition type Vertex [1..1]\ncreate reference target in Transition type Vertex [1..1]\ncreate reference trigger in Transition type Event [0..1]\n\n# StateMachine class as a container for states and transitions\ncreate class StateMachine\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\n```\n\nThis structure gives you a flexible, extensible base for interactive application state machines. The StateMachine holds states and transitions; transitions connect vertices (states or future node types), and optionally have a trigger event.\n\nYou can extend this with initial/final states or actions later, and Jjodel\u2019s visual editor will show this hierarchy clearly. Would you like me to add initial and final states or define actions next?"
       }
     ]
   },
@@ -121,137 +121,11 @@
     ],
     "predicted": [
       "region",
-      "state",
-      "transition"
-    ],
-    "precision": 0.6666666666666666,
-    "recall": 1.0,
-    "f1": 0.8,
-    "leakage": [],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "familiarity",
-        "question": "Are you familiar with the domain concepts?: ",
-        "answer": "no"
-      },
-      {
-        "stage": "background",
-        "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that state machines represent states and transitions, and that complex systems often have states that contain other states or run in parallel."
-      },
-      {
-        "stage": "agreement",
-        "question": "Do you agree with these concepts?: ",
-        "answer": "no"
-      },
-      {
-        "stage": "feedback",
-        "question": "What should be changed? ",
-        "answer": "The model should include Region to represent parallel structures and support hierarchy, not just State and Transition."
-      },
-      {
-        "stage": "agreement",
-        "question": "Do you agree with these concepts?: ",
-        "answer": "yes"
-      },
-      {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "moderate"
-      },
-      {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "moderate"
-      },
-      {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "moderate"
-      }
-    ]
-  },
-  {
-    "run": 1,
-    "profile_id": "user_b_hierarchical",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
-    "method": "no_elicitation",
-    "target": [
-      "region",
-      "state"
-    ],
-    "predicted": [
-      "state",
-      "transition"
-    ],
-    "precision": 0.5,
-    "recall": 0.5,
-    "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "prompt",
-        "question": "I want a state machine metamodel for complex systems.",
-        "answer": ""
-      }
-    ]
-  },
-  {
-    "run": 1,
-    "profile_id": "user_b_hierarchical",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
-    "method": "one_shot",
-    "target": [
-      "region",
-      "state"
-    ],
-    "predicted": [
-      "action",
-      "composite state",
-      "event",
-      "final state",
-      "guard",
-      "initial state",
-      "state",
-      "statemachine",
-      "sub-state",
-      "transition"
-    ],
-    "precision": 0.1,
-    "recall": 0.5,
-    "f1": 0.16666666666666669,
-    "leakage": [
-      "event"
-    ],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "prompt",
-        "question": "I want a state machine metamodel for complex systems.",
-        "answer": "Creating a state machine metamodel for complex systems involves defining key concepts like States, Transitions, Events, and possibly Actions or Guards. We should capture states (including initial and final), transitions triggered by events, and conditions (guards) that control transitions. For complexity, let's support composite states by allowing states to contain sub-states.\n\nI'll draft a metamodel with:\n\n- A State class with attributes for name and possibly type (initial, final).\n- A Transition referencing source and target states.\n- An Event class that triggers transitions.\n- Optionally, guards as a condition attribute on Transition.\n- Support for composite states through containment of sub-states.\n\nHere's a clear JjScript implementation for this:\n\n```jjscript\n# State Machine Metamodel for Complex Systems\n\n# Core classes\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\n\n# Attributes for State\ncreate attribute name in State type String\ncreate attribute isInitial in State type boolean\ncreate attribute isFinal in State type boolean\n\n# Attributes for Transition\ncreate attribute guard in Transition type String # guard condition as OCL or expression language\n\n# References\ncreate containment states in StateMachine type State [0..*]  # states belong to a state machine\ncreate containment transitions in StateMachine type Transition [0..*]  # transitions belong to the state machine\ncreate reference source in Transition type State [1]          # transition source state\ncreate reference target in Transition type State [1]          # transition target state\ncreate reference trigger in Transition type Event [0..1]      # event triggering the transition\n\n# Containment for composite states - states contain substates\ncreate containment subStates in State type State [0..*]\n\n# Attributes for Event\ncreate attribute name in Event type String\n\n# Optionally, if you want to model actions, you can add later\n\n```\n\nThis gives a solid and extensible foundation for complex state machines with composite states, transitions, events, and guards. You can later add constraints in Jjodel to require exactly one initial state per machine or that final states have no outgoing transitions.\n\nWould you like me to help you with constraints or add actions next?"
-      }
-    ]
-  },
-  {
-    "run": 1,
-    "profile_id": "user_c_teaching",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
-    "method": "interactive",
-    "target": [
-      "finalstate",
-      "state"
-    ],
-    "predicted": [
-      "finalstate",
       "state"
     ],
     "precision": 1.0,
     "recall": 1.0,
     "f1": 1.0,
-    "leakage": [],
-    "exact_hit": true,
     "transcript": [
       {
         "stage": "familiarity",
@@ -261,136 +135,7 @@
       {
         "stage": "background",
         "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that a state machine consists of states and transitions, and it ends at some final state."
-      },
-      {
-        "stage": "agreement",
-        "question": "Do you agree with these concepts?: ",
-        "answer": "no"
-      },
-      {
-        "stage": "feedback",
-        "question": "What should be changed? ",
-        "answer": "No, Transition is not essential. Please include FinalState instead of Transition."
-      },
-      {
-        "stage": "agreement",
-        "question": "Do you agree with these concepts?: ",
-        "answer": "yes"
-      },
-      {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "easy"
-      },
-      {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "easy"
-      }
-    ]
-  },
-  {
-    "run": 1,
-    "profile_id": "user_c_teaching",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
-    "method": "no_elicitation",
-    "target": [
-      "finalstate",
-      "state"
-    ],
-    "predicted": [
-      "state",
-      "transition"
-    ],
-    "precision": 0.5,
-    "recall": 0.5,
-    "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "prompt",
-        "question": "I want a state machine metamodel for teaching beginners.",
-        "answer": ""
-      }
-    ]
-  },
-  {
-    "run": 1,
-    "profile_id": "user_c_teaching",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
-    "method": "one_shot",
-    "target": [
-      "finalstate",
-      "state"
-    ],
-    "predicted": [
-      "event",
-      "name",
-      "source",
-      "state",
-      "statemachine",
-      "states",
-      "target",
-      "transition",
-      "transitions",
-      "trigger"
-    ],
-    "precision": 0.1,
-    "recall": 0.5,
-    "f1": 0.16666666666666669,
-    "leakage": [
-      "event"
-    ],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "prompt",
-        "question": "I want a state machine metamodel for teaching beginners.",
-        "answer": "Creating a simple state machine metamodel for beginners is a great idea! We'll define a few core metaclasses: StateMachine, State, Transition, and Event. The StateMachine will contain multiple States and Transitions. Each Transition will link a source State to a target State and may be triggered by an Event.\n\nI'll create this metamodel using clear naming and basic multiplicities for easy comprehension.\n\nHere's the JjScript to build such a metamodel:\n\n```jjscript\n# Simple State Machine Metamodel for Beginners\n\n# Core classes\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\n\n# Attributes to identify elements\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute name in Event type String\n\n# Relationships to structure the state machine\n\n# A StateMachine contains many States (composition)\ncreate containment states in StateMachine type State [0..*]\n\n# A StateMachine contains many Transitions (composition)\ncreate containment transitions in StateMachine type Transition [0..*]\n\n# Each Transition references its source and target States\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\n\n# A Transition may be triggered by zero or one Event\ncreate reference trigger in Transition type Event [0..1]\n```\n\nThis metamodel captures the essential concepts: states, transitions, and triggering events inside a state machine. In Jjodel, you can visualize containment with the containment references, showing that States and Transitions belong to a StateMachine. The mandatory references for source and target in Transition enforce that each transition connects two states. The optional trigger reference introduces events without complicating the model too much.\n\nOnce imported or created in Jjodel, you can add constraints (like ensuring no transitions exist outside a state machine), attribute defaults, or further refine multiplicities as learners become comfortable.\n\nWould you like me to add an example constraint or help with representing initial and final states?"
-      }
-    ]
-  },
-  {
-    "run": 2,
-    "profile_id": "user_a_event_driven",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
-    "method": "interactive",
-    "target": [
-      "event",
-      "state"
-    ],
-    "predicted": [
-      "event",
-      "state",
-      "transition"
-    ],
-    "precision": 0.6666666666666666,
-    "recall": 1.0,
-    "f1": 0.8,
-    "leakage": [],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "familiarity",
-        "question": "Are you familiar with the domain concepts?: ",
-        "answer": "no"
-      },
-      {
-        "stage": "background",
-        "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that in interactive applications, the system changes its behavior based on events and that it can be in one state at a time. States represent different screens or modes, and events are things like clicks or key presses that cause transitions."
-      },
-      {
-        "stage": "agreement",
-        "question": "Do you agree with these concepts?: ",
-        "answer": "no"
-      },
-      {
-        "stage": "feedback",
-        "question": "What should be changed? ",
-        "answer": "The proposed concepts miss the Event, which is essential for event-driven behavior. We need to include Event explicitly alongside State and Transition."
+        "answer": "I know that state machines are used to model the behavior of systems, with states representing conditions or situations, and regions possibly being parts of states for organizing complex behaviors."
       },
       {
         "stage": "agreement",
@@ -408,19 +153,19 @@
         "answer": "moderate"
       },
       {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "moderate"
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Transition. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none"
       }
     ]
   },
   {
-    "run": 2,
-    "profile_id": "user_a_event_driven",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
+    "run": 1,
+    "profile_id": "user_b_hierarchical",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
     "method": "no_elicitation",
     "target": [
-      "event",
+      "region",
       "state"
     ],
     "predicted": [
@@ -430,71 +175,64 @@
     "precision": 0.5,
     "recall": 0.5,
     "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
-        "question": "I want a state machine metamodel for interactive applications.",
+        "question": "I want a state machine metamodel for complex systems.",
         "answer": ""
       }
     ]
   },
   {
-    "run": 2,
-    "profile_id": "user_a_event_driven",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
+    "run": 1,
+    "profile_id": "user_b_hierarchical",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
     "method": "one_shot",
     "target": [
-      "event",
+      "region",
       "state"
     ],
     "predicted": [
-      "action",
-      "actions",
-      "entryactions",
+      "compositestate",
       "event",
-      "exitactions",
-      "source",
+      "guardcondition",
+      "incomingtransitions",
+      "outgoingtransitions",
+      "sourcestate",
       "state",
-      "statemachine",
       "substates",
-      "target",
+      "targetstate",
       "transition",
-      "trigger"
+      "triggerevent"
     ],
-    "precision": 0.16666666666666666,
-    "recall": 1.0,
-    "f1": 0.2857142857142857,
-    "leakage": [],
-    "exact_hit": false,
+    "precision": 0.09090909090909091,
+    "recall": 0.5,
+    "f1": 0.15384615384615385,
     "transcript": [
       {
         "stage": "prompt",
-        "question": "I want a state machine metamodel for interactive applications.",
-        "answer": "Designing a state machine metamodel for interactive applications is a classic and very useful modeling task. We want to capture the essential concepts like States, Transitions, Events that trigger transitions, and possibly Actions that occur as side-effects. States can be simple or composite (nested), and we can also have initial and final states.\n\nLet me create a clean, basic yet expressive core metamodel for a state machine that you could then extend as needed. It will include States, Transitions, Events, and Actions, plus common attributes and relevant references.\n\nHere\u2019s the executable JjScript to set that up:\n\n```jjscript\n# State Machine Metamodel for Interactive Applications\n\n# Core classes\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\ncreate class Action\n\n# Attributes\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute name in Event type String\ncreate attribute name in Action type String\n\n# References\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\ncreate containment events in StateMachine type Event [0..*]\ncreate containment actions in StateMachine type Action [0..*]\n\n# State hierarchy for composite states\ncreate containment subStates in State type State [0..*]\n\n# Transitions link source and target states\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\n\n# Transitions triggered by Event\ncreate reference trigger in Transition type Event [0..1]\n\n# Transitions can have Actions executed during transition\ncreate reference actions in Transition type Action [0..*]\n\n# States can have Actions executed on entry and exit\ncreate reference entryActions in State type Action [0..*]\ncreate reference exitActions in State type Action [0..*]\n\n# Additional feature: mark StateMachine as root container\n# (Not strictly needed but good for tooling)\n```\n\nThis metamodel models the structure clearly: a StateMachine owns States, Transitions, Events, and Actions. States can be nested for hierarchical state machines. Transitions connect States and may be triggered by Events, performing Actions.\n\nIn Jjodel's visual editor, you can explore these classes and references, adjust multiplicities, and later add OCL constraints, such as ensuring transitions connect only states within the same machine.\n\nWould you like me to add constraints or extend with more advanced features like guards on transitions or event parameters?"
+        "question": "I want a state machine metamodel for complex systems.",
+        "answer": "A state machine metamodel for complex systems usually includes key concepts like States, Transitions, Events, and potentially Actions or Guards. States can be simple or composite (nested), and transitions usually trigger on events with optional guards or actions.\n\nLet me build a solid yet extensible state machine metamodel for you using JjScript. It will include:\n\n- State (with attributes like name)\n- CompositeState (extends State for nested states)\n- Transition (linking source and target states)\n- Event (that triggers transitions)\n- An attribute for Transition to hold guard conditions as a String for simplicity\n\nHere is the JjScript to create this metamodel:\n\n```jjscript\n# State Machine Metamodel\n\n# Basic states\ncreate class State\ncreate attribute name in State type String\n\n# Composite states (nested states) - inherits State\ncreate class CompositeState\nCompositeState extends State\n\n# Containment: CompositeState contains nested states (0..*)\ncreate containment subStates in CompositeState type State [0..*]\n\n# Events that trigger transitions\ncreate class Event\ncreate attribute name in Event type String\n\n# Transitions\ncreate class Transition\ncreate attribute guardCondition in Transition type String\n\n# References from Transition to Event and to States\ncreate reference triggerEvent in Transition type Event [0..1]\ncreate reference sourceState in Transition type State\ncreate reference targetState in Transition type State\n\n# States have outgoing transitions (0..*)\ncreate reference outgoingTransitions in State type Transition [0..*]\n\n# States have incoming transitions (0..*)\ncreate reference incomingTransitions in State type Transition [0..*]\n```\n\nThis provides a foundation that allows you to model complex nested states and the transitions between them triggered by events, optionally guarded by some condition.\n\nIf you want, we can also add Actions and associate them with transitions or states, or define constraints to enforce rules like a transition\u2019s source and target must be states in the same composite state. Just let me know!"
       }
     ]
   },
   {
-    "run": 2,
-    "profile_id": "user_b_hierarchical",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
+    "run": 1,
+    "profile_id": "user_c_teaching",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
     "method": "interactive",
     "target": [
-      "region",
+      "finalstate",
       "state"
     ],
     "predicted": [
-      "region",
+      "finalstate",
       "state",
       "transition"
     ],
     "precision": 0.6666666666666666,
     "recall": 1.0,
     "f1": 0.8,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "familiarity",
@@ -504,7 +242,7 @@
       {
         "stage": "background",
         "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that state machines have states and transitions, but I am not familiar with regions or how parallel states work."
+        "answer": "I know that a state machine helps show different steps or conditions something can be in, and how it moves from one step to another. I'm not familiar with technical terms like states or final states though."
       },
       {
         "stage": "agreement",
@@ -514,7 +252,7 @@
       {
         "stage": "feedback",
         "question": "What should be changed? ",
-        "answer": "You should include Region to capture parallelism and hierarchy, not just State and Transition."
+        "answer": "Add FinalState because it's important to show when a process ends. Also, keep State and Transition for the basics."
       },
       {
         "stage": "agreement",
@@ -524,120 +262,7 @@
       {
         "stage": "challenge_selection",
         "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "hard"
-      },
-      {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
         "answer": "moderate"
-      },
-      {
-        "stage": "challenge_selection",
-        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
-        "answer": "moderate"
-      }
-    ]
-  },
-  {
-    "run": 2,
-    "profile_id": "user_b_hierarchical",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
-    "method": "no_elicitation",
-    "target": [
-      "region",
-      "state"
-    ],
-    "predicted": [
-      "state",
-      "transition"
-    ],
-    "precision": 0.5,
-    "recall": 0.5,
-    "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "prompt",
-        "question": "I want a state machine metamodel for complex systems.",
-        "answer": ""
-      }
-    ]
-  },
-  {
-    "run": 2,
-    "profile_id": "user_b_hierarchical",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
-    "method": "one_shot",
-    "target": [
-      "region",
-      "state"
-    ],
-    "predicted": [
-      "action",
-      "event",
-      "state",
-      "statemachine",
-      "transition"
-    ],
-    "precision": 0.2,
-    "recall": 0.5,
-    "f1": 0.28571428571428575,
-    "leakage": [
-      "event"
-    ],
-    "exact_hit": false,
-    "transcript": [
-      {
-        "stage": "prompt",
-        "question": "I want a state machine metamodel for complex systems.",
-        "answer": "A state machine metamodel is a classic modeling pattern that captures states, transitions, events, and actions to describe dynamic behavior in complex systems. To keep it clear and extensible, I'll create core metaclasses like StateMachine, State, Transition, Event, and Action, along with essential attributes and relationships.\n\nLet's build a solid foundation that lets you model hierarchical states (states containing substates) and transitions triggered by events, optionally with guards or actions.\n\nHere\u2019s the JjScript code to create this state machine metamodel:\n\n```jjscript\n# State Machine Metamodel for Complex Systems\n\n# Core classes\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\ncreate class Action\n\n# Attributes for State\ncreate attribute name in State type String\ncreate attribute isInitial in State type boolean\ncreate attribute isFinal in State type boolean\n\n# Attribute for Transition\ncreate attribute guard in Transition type String  # For guard conditions\n\n# Attribute for Event\ncreate attribute name in Event type String\n\n# Attribute for Action\ncreate attribute name in Action type String\ncreate attribute effect in Action type String    # Description of the action effect\n\n# References: StateMachine owns multiple states and transitions\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\n\n# Hierarchical states: states can contain substates\ncreate containment subStates in State type State [0..*]\n\n# Transitions link source and target states\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\n\n# Transitions triggered by Events\ncreate reference trigger in Transition type Event [0..1]\n\n# Transitions can have Actions\ncreate containment actions in Transition type Action [0..*]\n```\n\nThis sets up a comprehensive framework for complex state machines:\n\n- You can model nested states\n- Each transition has a guard condition, optional triggering event, and multiple actions\n- StateMachine is the root container for states and transitions\n\nOnce created in Jjodel, you can define constraints next, such as ensuring only one initial state per state machine or that final states have no outgoing transitions \u2014 I can help you with that too if interested! Would you like constraints added?"
-      }
-    ]
-  },
-  {
-    "run": 2,
-    "profile_id": "user_c_teaching",
-    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
-    "method": "interactive",
-    "target": [
-      "finalstate",
-      "state"
-    ],
-    "predicted": [
-      "finalstate",
-      "state"
-    ],
-    "precision": 1.0,
-    "recall": 1.0,
-    "f1": 1.0,
-    "leakage": [],
-    "exact_hit": true,
-    "transcript": [
-      {
-        "stage": "familiarity",
-        "question": "Are you familiar with the domain concepts?: ",
-        "answer": "no"
-      },
-      {
-        "stage": "background",
-        "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that a state machine consists of states and transitions, and it ends at a final state."
-      },
-      {
-        "stage": "agreement",
-        "question": "Do you agree with these concepts?: ",
-        "answer": "no"
-      },
-      {
-        "stage": "feedback",
-        "question": "What should be changed? ",
-        "answer": "No, Transition is not essential. Please replace Transition with FinalState."
-      },
-      {
-        "stage": "agreement",
-        "question": "Do you agree with these concepts?: ",
-        "answer": "yes"
       },
       {
         "stage": "challenge_selection",
@@ -652,7 +277,7 @@
     ]
   },
   {
-    "run": 2,
+    "run": 1,
     "profile_id": "user_c_teaching",
     "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
     "method": "no_elicitation",
@@ -667,8 +292,6 @@
     "precision": 0.5,
     "recall": 0.5,
     "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
@@ -678,7 +301,7 @@
     ]
   },
   {
-    "run": 2,
+    "run": 1,
     "profile_id": "user_c_teaching",
     "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
     "method": "one_shot",
@@ -688,7 +311,7 @@
     ],
     "predicted": [
       "event",
-      "events",
+      "initialstate",
       "name",
       "source",
       "state",
@@ -702,15 +325,332 @@
     "precision": 0.09090909090909091,
     "recall": 0.5,
     "f1": 0.15384615384615385,
-    "leakage": [
-      "event"
-    ],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
         "question": "I want a state machine metamodel for teaching beginners.",
-        "answer": "Creating a state machine metamodel for beginners involves defining essential elements such as states, transitions, and events. We want it to be simple and clear, covering the core concepts without overwhelming complexity.\n\nI'll define a basic metamodel with these metaclasses: StateMachine, State, Transition, and Event. States have names, transitions link source and target states, and transitions are triggered by events. This minimal design helps beginners grasp the classic structure of a state machine.\n\nHere's the JjScript to create this metamodel in Jjodel:\n\n```jjscript\n# Basic State Machine Metamodel for Beginners\n\n# Core classes\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\n\n# Attributes\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute name in Event type String\n\n# References for StateMachine\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\ncreate containment events in StateMachine type Event [0..*]\n\n# References for Transition to link states and events\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\ncreate reference trigger in Transition type Event [0..1]\n```\n\nThis sets up a foundational metamodel: a StateMachine contains States, Transitions, and Events; each Transition has exactly one source and one target State and may optionally be triggered by an Event.\n\nYou can load this in Jjodel and experiment by adding instances. Later, you might extend with abstract states, composite states, or guard conditions if you want to teach more advanced concepts.\n\nWould you like me to help you add constraints or more sophisticated features next?"
+        "answer": "Creating a state machine metamodel for beginners is a great idea! We'll keep it simple and clear to capture the key concepts like states, transitions, events, and possibly start/end states. This will help learners understand the basic structure and relationships in a state machine without overwhelming complexity.\n\nLet's define the core metaclasses: `StateMachine`, `State`, `Transition`, and `Event`. We\u2019ll include attributes like names, and references to link states and transitions. I\u2019ll also add a containment relationship to show that states belong to a state machine, and transitions link states.\n\nHere is the JjScript code to build that basic state machine metamodel:\n\n```jjscript\n# State Machine Metamodel for Beginners\n\n# Core classes\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\n\n# Attributes for basic identification\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute name in Transition type String\ncreate attribute name in Event type String\n\n# Containment: States belong to a StateMachine\ncreate containment states in StateMachine type State [0..*]\n\n# Containment: Transitions belong to a StateMachine\ncreate containment transitions in StateMachine type Transition [0..*]\n\n# References: Transition has source and target states\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\n\n# Reference: Transition may be triggered by an Event (optional)\ncreate reference trigger in Transition type Event [0..1]\n\n# To indicate the start state, we add a reference from StateMachine to State (optional, single)\ncreate reference initialState in StateMachine type State [0..1]\n```\n\nThis sets the foundation clearly: a state machine contains states and transitions, transitions link states, and they may be labeled by events. The initial state reference highlights where the machine starts.\n\nFrom here, you can expand with derived states (e.g., final states), guards, or hierarchical states if you want to move beyond basics.\n\nWould you like me to help add constraints or create specific examples to illustrate this further?"
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_a_event_driven",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
+    "method": "interactive",
+    "target": [
+      "event",
+      "state"
+    ],
+    "predicted": [
+      "event",
+      "state",
+      "transition"
+    ],
+    "precision": 0.6666666666666666,
+    "recall": 1.0,
+    "f1": 0.8,
+    "transcript": [
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no"
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "Nothing"
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "no"
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I think you should add Event since the application needs to react to user actions. Also, Transition should include the triggering Event to clearly connect states through events."
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Screen, OperatingMode. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_a_event_driven",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
+    "method": "no_elicitation",
+    "target": [
+      "event",
+      "state"
+    ],
+    "predicted": [
+      "state",
+      "transition"
+    ],
+    "precision": 0.5,
+    "recall": 0.5,
+    "f1": 0.5,
+    "transcript": [
+      {
+        "stage": "prompt",
+        "question": "I want a state machine metamodel for interactive applications.",
+        "answer": ""
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_a_event_driven",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
+    "method": "one_shot",
+    "target": [
+      "event",
+      "state"
+    ],
+    "predicted": [
+      "action",
+      "event",
+      "finalstates",
+      "initialstate",
+      "state",
+      "statemachine",
+      "transition"
+    ],
+    "precision": 0.2857142857142857,
+    "recall": 1.0,
+    "f1": 0.4444444444444445,
+    "transcript": [
+      {
+        "stage": "prompt",
+        "question": "I want a state machine metamodel for interactive applications.",
+        "answer": "A state machine metamodel for interactive applications typically includes core concepts like States, Transitions, Events that trigger transitions, and optionally Actions executed on transitions or states. We might also want an initial state and possibly final states.\n\nI'll create a basic yet solid metamodel that you can evolve, with these key elements:\n\n- **State**: Represents a state in the machine, having a name.\n- **Transition**: Links two states; triggered by an event and optionally performing an action.\n- **Event**: Something that triggers transitions.\n- **Action**: Some executable behavior associated with transitions or states.\n- **StateMachine**: The container of all states and transitions.\n\nLet's build this in JjScript to keep it concrete and ready to use in Jjodel.\n\n```jjscript\n# State Machine Metamodel for Interactive Applications\n\n# Core metaclasses\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\ncreate class Action\n\n# Attributes\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute name in Event type String\ncreate attribute name in Action type String\n\n# References\ncreate containment states in StateMachine type State [1..*]\ncreate containment transitions in StateMachine type Transition [0..*]\ncreate containment events in StateMachine type Event [0..*]\ncreate containment actions in StateMachine type Action [0..*]\n\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\ncreate reference trigger in Transition type Event [0..1]\ncreate reference effect in Transition type Action [0..1]\n\n# Optionally, you may want to add initial and final states\ncreate reference initialState in StateMachine type State [0..1]\ncreate reference finalStates in StateMachine type State [0..*]\n```\n\nThis gives you a flexible base to model interactive behavior as state machines. You can extend with constraints or add attributes like whether a state is 'accepting' or if actions have parameters. In Jjodel, you\u2019ll see these classes and relationships visually and can adjust multiplicities or names in the properties panel anytime.\n\nWould you like me to help add constraints or specific advanced features like hierarchical states or composite actions next?"
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_b_hierarchical",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
+    "method": "interactive",
+    "target": [
+      "region",
+      "state"
+    ],
+    "predicted": [
+      "i want a state machine metamodel for complex systems."
+    ],
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "transcript": [
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no"
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "I know that state machines represent different states of a system and the transitions between them, but I\u2019m not sure what a region is."
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_b_hierarchical",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
+    "method": "no_elicitation",
+    "target": [
+      "region",
+      "state"
+    ],
+    "predicted": [
+      "state",
+      "transition"
+    ],
+    "precision": 0.5,
+    "recall": 0.5,
+    "f1": 0.5,
+    "transcript": [
+      {
+        "stage": "prompt",
+        "question": "I want a state machine metamodel for complex systems.",
+        "answer": ""
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_b_hierarchical",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
+    "method": "one_shot",
+    "target": [
+      "region",
+      "state"
+    ],
+    "predicted": [
+      "event",
+      "event.name",
+      "state",
+      "state.isinitial",
+      "state.name",
+      "statemachine",
+      "statemachine.events",
+      "statemachine.initialstate",
+      "statemachine.states",
+      "statemachine.transitions",
+      "transition",
+      "transition.source",
+      "transition.target",
+      "transition.trigger",
+      "transition.triggercondition"
+    ],
+    "precision": 0.06666666666666667,
+    "recall": 0.5,
+    "f1": 0.11764705882352941,
+    "transcript": [
+      {
+        "stage": "prompt",
+        "question": "I want a state machine metamodel for complex systems.",
+        "answer": "A state machine metamodel for complex systems typically includes core metaclasses like StateMachine, State, Transition, and Event. States represent conditions the system can be in, transitions capture changes triggered by events, and state machines group these behaviors.\n\nLet me provide you with JjScript code that creates a solid foundational state machine metamodel. We\u2019ll include states with names, transitions linking states triggered by events, and events with their own attributes.\n\n```jjscript\n# State Machine Metamodel for Complex Systems\n\n# Core metaclasses\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\n\n# Attributes for State\ncreate attribute name in State type String\ncreate attribute isInitial in State type boolean\n\n# Attributes for Transition\ncreate attribute triggerCondition in Transition type String\n\n# Attributes for Event\ncreate attribute name in Event type String\n\n# References and containment\ncreate containment states in StateMachine type State [1..*]\ncreate containment transitions in StateMachine type Transition [0..*]\ncreate containment events in StateMachine type Event [0..*]\n\n# StateMachine references for Start and End State (optional)\ncreate reference initialState in StateMachine type State [0..1]\n\n# Transition references\ncreate reference source in Transition type State\ncreate reference target in Transition type State\ncreate reference trigger in Transition type Event [0..1]\n```\n\nThis metamodel covers hierarchical organization: states and transitions are contained within the state machine. Transitions link source and target states, optionally triggered by an event. You might want to add support for composite states or guard conditions later.\n\nWould you like to include hierarchical states (nested states) or support for state entry/exit actions next?"
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_c_teaching",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
+    "method": "interactive",
+    "target": [
+      "finalstate",
+      "state"
+    ],
+    "predicted": [
+      "finalstate",
+      "state",
+      "transition"
+    ],
+    "precision": 0.6666666666666666,
+    "recall": 1.0,
+    "f1": 0.8,
+    "transcript": [
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no"
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "I know that a state machine consists of states and transitions, and there is a special final state where the process ends."
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "no"
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I think you should add FinalState because beginners need to understand how a process ends clearly."
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "easy"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "easy"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "easy"
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_c_teaching",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
+    "method": "no_elicitation",
+    "target": [
+      "finalstate",
+      "state"
+    ],
+    "predicted": [
+      "state",
+      "transition"
+    ],
+    "precision": 0.5,
+    "recall": 0.5,
+    "f1": 0.5,
+    "transcript": [
+      {
+        "stage": "prompt",
+        "question": "I want a state machine metamodel for teaching beginners.",
+        "answer": ""
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "profile_id": "user_c_teaching",
+    "sample_file_path": "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
+    "method": "one_shot",
+    "target": [
+      "finalstate",
+      "state"
+    ],
+    "predicted": [
+      "event",
+      "state",
+      "transition"
+    ],
+    "precision": 0.3333333333333333,
+    "recall": 0.5,
+    "f1": 0.4,
+    "transcript": [
+      {
+        "stage": "prompt",
+        "question": "I want a state machine metamodel for teaching beginners.",
+        "answer": "Great idea! A state machine metamodel for beginners should capture the core concepts simply: states, transitions, and events triggering transitions. We want to define metaclasses for State, Transition, and Event. States will have names; transitions connect source and target states and are triggered by events.\n\nI'll provide you JjScript code that creates these basic metaclasses and relationships. This will be a solid foundation for teaching state machines.\n\n```jjscript\n# Beginner-friendly State Machine Metamodel\n\n# Core metaclasses\ncreate class State\ncreate class Transition\ncreate class Event\n\n# Attributes\ncreate attribute name in State type String\ncreate attribute name in Event type String\n\n# References\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\ncreate reference trigger in Transition type Event [0..1]\n```\n\nThis defines States with names, Events with names, and Transitions linking two States plus optionally triggered by an Event. Next, you can extend by adding initial and final states or guard conditions, but this keeps it simple for beginners.\n\nIf you'd like, I can help add constraints or extend it with composite states or history states to show more advanced concepts step by step!"
       }
     ]
   },
@@ -731,8 +671,6 @@
     "precision": 0.6666666666666666,
     "recall": 1.0,
     "f1": 0.8,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "familiarity",
@@ -742,7 +680,7 @@
       {
         "stage": "background",
         "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that a state machine involves states and transitions triggered by events. It models how an application reacts to different inputs or actions."
+        "answer": "Nothing"
       },
       {
         "stage": "agreement",
@@ -752,7 +690,7 @@
       {
         "stage": "feedback",
         "question": "What should be changed? ",
-        "answer": "You should add Event as a core concept since events trigger state changes. Transition alone doesn\u2019t capture event-driven behavior fully."
+        "answer": "I think \"Event\" should be added to the metamodel since interactive applications respond to events. Also, the concept \"Transition\" should be linked with \"Event\" to show that transitions happen in response to events."
       },
       {
         "stage": "agreement",
@@ -773,11 +711,6 @@
         "stage": "challenge_selection",
         "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
         "answer": "moderate"
-      },
-      {
-        "stage": "file_new_concepts_selection",
-        "question": "The attached file suggests these new concepts: click, submit, timeout, cancel, screen, operating mode. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
-        "answer": "none"
       }
     ]
   },
@@ -797,8 +730,6 @@
     "precision": 0.5,
     "recall": 0.5,
     "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
@@ -819,21 +750,17 @@
     "predicted": [
       "action",
       "event",
-      "simplestate",
       "state",
-      "statemachine",
       "transition"
     ],
-    "precision": 0.3333333333333333,
+    "precision": 0.5,
     "recall": 1.0,
-    "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
+    "f1": 0.6666666666666666,
     "transcript": [
       {
         "stage": "prompt",
         "question": "I want a state machine metamodel for interactive applications.",
-        "answer": "Creating a state machine metamodel for interactive applications is a classic and very practical choice. We want to capture key concepts like States, Transitions, Events triggering transitions, and Actions performed during transitions or within states. Typically, we\u2019ll have a StateMachine class as a container, States which might be hierarchical or simple, and Transitions linking states. Events can be modeled as separate classes or lightweight references.\n\nLet me create a clean and extensible state machine metamodel for you using JjScript. This will include States (with possible sub-states), Transitions (with source and target states, triggered by Events), and a StateMachine to contain those elements. We'll add basic attributes like name on most classes, and also include an abstract State class to allow for specialization if needed.\n\n```jjscript\n# State Machine Metamodel for Interactive Applications\n\n# Core container class\ncreate class StateMachine\n\n# Abstract State class - base for any state type\ncreate abstract class State\ncreate attribute name in State type String\n\n# StateMachine contains States - composition (ownership)\ncreate containment states in StateMachine type State [0..*]\n\n# Concrete State class extending abstract State\ncreate class SimpleState\nSimpleState extends State\n\n# Transition class representing edges between states\ncreate class Transition\ncreate attribute name in Transition type String\n\n# Each Transition has a source and target State (references)\ncreate reference source in Transition type State\ncreate reference target in Transition type State\n\n# State can have outgoing transitions (references)\ncreate reference outgoing in State type Transition [0..*]\n\n# Events triggering transitions\ncreate class Event\ncreate attribute name in Event type String\n\n# Transition triggered by one Event (optional)\ncreate reference trigger in Transition type Event [0..1]\n\n# StateMachine contains Events (composition)\ncreate containment events in StateMachine type Event [0..*]\n\n# Actions executed during transition or on entering/exiting states\ncreate class Action\ncreate attribute name in Action type String\n\n# Transition has zero or more Actions\ncreate containment actions in Transition type Action [0..*]\n\n# Optionally, States can have entry and exit Actions\ncreate containment entryActions in State type Action [0..*]\ncreate containment exitActions in State type Action [0..*]\n```\n\nThis metamodel lets you build flexible interactive state machines with named states and transitions, events that trigger state changes, and actions executed on both entering/exiting states and during transitions. You can later add hierarchy by specializing State into CompositeState if needed.\n\nYou can design your state machines visually in Jjodel and attach constraints or behaviors next. Would you like me to add examples of constraints or hierarchical states next?"
+        "answer": "Creating a state machine metamodel for interactive applications involves defining the core concepts like States, Transitions, Events, and Actions. States represent conditions or modes, Transitions connect States and are triggered by Events, which may execute Actions.\n\nLet's build a clean and practical metamodel capturing these essentials. I will define State and Transition classes, include basic attributes, set references for transitions linking states, and create Event and Action classes to represent triggers and behaviors.\n\nHere's the JjScript to get you started with this state machine metamodel:\n\n```jjscript\n# State Machine Metamodel for Interactive Applications\n\n# Core classes\ncreate class State\ncreate class Transition\ncreate class Event\ncreate class Action\n\n# Attributes for State\ncreate attribute name in State type String\ncreate attribute isInitial in State type boolean\ncreate attribute isFinal in State type boolean\n\n# Attributes for Transition\ncreate attribute name in Transition type String\ncreate attribute guardCondition in Transition type String\n\n# Attributes for Event\ncreate attribute name in Event type String\n\n# Attributes for Action\ncreate attribute name in Action type String\ncreate attribute script in Action type String\n\n# References\ncreate containment outgoingTransitions in State type Transition [0..*]\ncreate reference targetState in Transition type State [1]\ncreate reference triggerEvent in Transition type Event [0..1]\ncreate reference effectAction in Transition type Action [0..1]\n```\n\nThis metamodel includes States with initial and final markers, Transitions linking States (using outgoingTransitions containment to express ownership), and optional guard conditions. Events trigger transitions, and Actions represent effects that execute during transitions.\n\nYou can extend this with compound states, hierarchical states, or parallel regions later by adding more classes and references. Meanwhile, this provides a solid foundation to model typical interactive app behaviors as states and transitions.\n\nWould you like me to add constraints or example usage next?"
       }
     ]
   },
@@ -848,13 +775,12 @@
     ],
     "predicted": [
       "region",
-      "state"
+      "state",
+      "transition"
     ],
-    "precision": 1.0,
+    "precision": 0.6666666666666666,
     "recall": 1.0,
-    "f1": 1.0,
-    "leakage": [],
-    "exact_hit": true,
+    "f1": 0.8,
     "transcript": [
       {
         "stage": "familiarity",
@@ -864,7 +790,17 @@
       {
         "stage": "background",
         "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know states represent conditions or situations in a system, and regions are parts of the state machine that can be active simultaneously for parallelism."
+        "answer": "I know that a state machine helps describe how a system changes its state in response to events. States represent different conditions or modes of the system, and transitions show how the system moves between states. I want to model complex systems, so states might be nested or grouped, maybe that's where regions come in."
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "no"
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "You should include the concept of Region to handle nested states and concurrency in complex systems."
       },
       {
         "stage": "agreement",
@@ -877,19 +813,14 @@
         "answer": "moderate"
       },
       {
-        "stage": "file_new_concepts_selection",
-        "question": "The attached file suggests these new concepts: CompositeState, Substate. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
-        "answer": "none"
-      },
-      {
         "stage": "challenge_selection",
         "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
         "answer": "moderate"
       },
       {
-        "stage": "file_new_concepts_selection",
-        "question": "The attached file suggests these new concepts: Transition, CompositeState, Substate. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
-        "answer": "none"
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
       }
     ]
   },
@@ -909,8 +840,6 @@
     "precision": 0.5,
     "recall": 0.5,
     "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
@@ -930,23 +859,29 @@
     ],
     "predicted": [
       "action",
+      "actions",
       "event",
+      "guardcondition",
+      "iscomposite",
+      "name",
+      "source",
       "state",
       "statemachine",
-      "transition"
+      "states",
+      "substates",
+      "target",
+      "transition",
+      "transitions",
+      "trigger"
     ],
-    "precision": 0.2,
+    "precision": 0.06666666666666667,
     "recall": 0.5,
-    "f1": 0.28571428571428575,
-    "leakage": [
-      "event"
-    ],
-    "exact_hit": false,
+    "f1": 0.11764705882352941,
     "transcript": [
       {
         "stage": "prompt",
         "question": "I want a state machine metamodel for complex systems.",
-        "answer": "A state machine metamodel is a great way to capture the behavior of complex systems by modeling states and their transitions. Typically, a solid state machine metamodel includes core elements such as States, Transitions, Events triggering those transitions, and optionally Actions taken on entering or exiting states. You might also want to model composite states or nested states for complexity and include an initial or final state.\n\nI'll build you a foundational metamodel capturing these essentials: States (with name attribute), Transitions linking states triggered by Events, and Actions associated with states. You'll be able to build on this further by adding things like hierarchical states or more detailed behavioral semantics later.\n\nHere is the JjScript code that defines this foundational state machine metamodel:\n\n```jjscript\n# State Machine Metamodel for Complex Systems\n\n# Core metaclasses\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\ncreate class Action\n\n# Attributes\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute name in Event type String\ncreate attribute name in Action type String\ncreate attribute actionCode in Action type String  # To hold e.g. code or description of the action\n\n# References\n\n# StateMachine contains States and Transitions as compositions (strong ownership)\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\n\n# Transition refers to source and target States (required)\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\n\n# Transition triggered by an Event (optional)\ncreate reference trigger in Transition type Event [0..1]\n\n# State can have entry and exit Actions (optional)\ncreate containment entryActions in State type Action [0..*]\ncreate containment exitActions in State type Action [0..*]\n\n# You may want to mark initial and final states by attributes or separate classes\ncreate attribute isInitial in State type boolean\ncreate attribute isFinal in State type boolean\n```\n\nThis metamodel sets a good foundation. You can visually arrange and manipulate this structure in Jjodel's editor, and later add constraints to ensure, for example, exactly one initial state per state machine, or that final states cannot have outgoing transitions.\n\nWould you like help adding such constraints or extending this metamodel with hierarchical states or guards on transitions?"
+        "answer": "Creating a state machine metamodel for complex systems is a great choice! We want to capture key concepts like states, transitions, events, and possibly actions or guards to reflect conditions.\n\nHere\u2019s a clean core metamodel that you can build upon. It defines a StateMachine container holding States and Transitions. States can be composite (contain sub-states), and Transitions link source and target States, triggered by Events and optionally guarded by conditions.\n\nI\u2019ll provide you the JjScript to create this foundation in your Jjodel project:\n\n```jjscript\n# State Machine Metamodel for Complex Systems\n\n# Core classes\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\ncreate class Action\n\n# Attributes\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute isComposite in State type boolean\ncreate attribute name in Event type String\ncreate attribute name in Action type String\ncreate attribute guardCondition in Transition type String\n\n# Containments: StateMachine owns States and Transitions\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\n\n# Composite states can contain sub-states (hierarchy)\ncreate containment subStates in State type State [0..*]\n\n# References: Transitions link source and target States\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\n\n# Transitions triggered by an Event\ncreate reference trigger in Transition type Event [0..1]\n\n# Transitions may have actions to execute\ncreate reference actions in Transition type Action [0..*]\n```\n\nThis setup introduces flexibility with composite states and includes the basic elements: naming, guard conditions, triggers, and actions.\n\nOnce you create this, you can visually organize and validate complex behaviors in Jjodel\u2019s editors. Later, we can add constraints to ensure the model\u2019s integrity, such as preventing transitions without source/target or enforcing unique state names.\n\nIf you want, I can help you add constraints or expand with more features like history states, entry/exit actions, or even hierarchical event priorities! Just ask."
       }
     ]
   },
@@ -960,13 +895,13 @@
       "state"
     ],
     "predicted": [
-      "i want a state machine metamodel for teaching beginners."
+      "finalstate",
+      "state",
+      "transition"
     ],
-    "precision": 0.0,
-    "recall": 0.0,
-    "f1": 0.0,
-    "leakage": [],
-    "exact_hit": false,
+    "precision": 0.6666666666666666,
+    "recall": 1.0,
+    "f1": 0.8,
     "transcript": [
       {
         "stage": "familiarity",
@@ -976,12 +911,37 @@
       {
         "stage": "background",
         "question": "What do you already know about this domain (or type 'nothing')? ",
-        "answer": "I know that states represent conditions or situations in a process, and a final state represents the end of the process."
+        "answer": "Nothing."
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "no"
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Please add FinalState to clearly indicate the end of the process for beginners."
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
       },
       {
         "stage": "challenge_selection",
         "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
         "answer": "easy"
+      },
+      {
+        "stage": "challenge_selection",
+        "question": "Choose validation challenge level:\n1. Easy - Simple instances with basic attributes\n2. Moderate - Complex relationships and realistic values\n3. Hard - Stress test with boundary values and edge cases\nWhich level do you want? (easy/moderate/hard)",
+        "answer": "moderate"
       }
     ]
   },
@@ -1001,8 +961,6 @@
     "precision": 0.5,
     "recall": 0.5,
     "f1": 0.5,
-    "leakage": [],
-    "exact_hit": false,
     "transcript": [
       {
         "stage": "prompt",
@@ -1021,23 +979,26 @@
       "state"
     ],
     "predicted": [
-      "abstracttransition",
       "event",
+      "isstart",
+      "name",
+      "source",
       "state",
-      "transition"
+      "statemachine",
+      "states",
+      "target",
+      "transition",
+      "transitions",
+      "trigger"
     ],
-    "precision": 0.25,
+    "precision": 0.09090909090909091,
     "recall": 0.5,
-    "f1": 0.3333333333333333,
-    "leakage": [
-      "event"
-    ],
-    "exact_hit": false,
+    "f1": 0.15384615384615385,
     "transcript": [
       {
         "stage": "prompt",
         "question": "I want a state machine metamodel for teaching beginners.",
-        "answer": "Creating a simple state machine metamodel is a great way to help beginners understand fundamental modeling concepts like states, transitions, and events. I\u2019ll build a straightforward metamodel that includes the core concepts: States, Transitions between states, and Events that trigger transitions.\n\nHere\u2019s what we\u2019ll do:\n- Define a `State` class with a name.\n- Define an abstract `Transition` class (because transitions aren\u2019t instantiated on their own, just specific transitions between states).\n- Create a `Transition` class specialized from the abstract, with references to source and target states.\n- Define an `Event` class to represent triggers on transitions.\n- Link transitions to events representing trigger relationships.\n\nThis structure is minimal but captures key aspects beginners should understand. Here\u2019s the JjScript to create this metamodel in Jjodel:\n\n```jjscript\n# State Machine Metamodel for Beginners\n\n# Create State class\ncreate class State\ncreate attribute name in State type String\n\n# Create abstract Transition class (base for all transitions)\ncreate abstract class AbstractTransition\n\n# Create concrete Transition class inheriting from AbstractTransition\ncreate class Transition\nTransition extends AbstractTransition\n\n# Transitions have source and target States (references)\ncreate reference source in Transition type State [1]\ncreate reference target in Transition type State [1]\n\n# Create Event class representing triggers\ncreate class Event\ncreate attribute name in Event type String\n\n# Each Transition is triggered by an Event\ncreate reference trigger in Transition type Event [1]\n```\n\nThis gives beginners a clear map: states are nodes, transitions link the nodes, and events trigger those transitions. You can extend it later with guards, actions, or composite states.\n\nIn Jjodel, you can explore this visually in the editor, check attribute and reference multiplicities, and add textual constraints if needed. Would you like also sample constraints or some example model instances to test?"
+        "answer": "For a state machine metamodel suitable for beginners, we want to keep it simple but cover the basic concepts: states, transitions, and events triggering state changes. We can also add a start state indicator and maybe a naming attribute for clarity.\n\nI'll create the key metaclasses: StateMachine, State, Transition, and Event. States have names; transitions connect source and target states and reference the triggering event. The StateMachine will contain states and transitions, emphasizing containment to show ownership in the metamodel.\n\nHere's the JjScript to set this up:\n\n```jjscript\n# Simple State Machine Metamodel for beginners\n\n# Core metaclasses\ncreate class StateMachine\ncreate class State\ncreate class Transition\ncreate class Event\n\n# Attributes\ncreate attribute name in StateMachine type String\ncreate attribute name in State type String\ncreate attribute name in Event type String\n\n# Containments - StateMachine owns states and transitions\ncreate containment states in StateMachine type State [0..*]\ncreate containment transitions in StateMachine type Transition [0..*]\n\n# References - Transition connects states and is triggered by an event\ncreate reference source in Transition type State [1..1]\ncreate reference target in Transition type State [1..1]\ncreate reference trigger in Transition type Event [0..1]\n\n# Attribute for marking start state\ncreate attribute isStart in State type boolean\n```\n\nThis structure allows beginners to model a simple state machine: defining states with names, marking one as the start state, creating transitions with source and target states, and optionally associating events that trigger transitions. Using containment clarifies ownership in the model and helps with editing in tools like Jjodel.\n\nYou could enhance this later with guards or actions, but this base is easy to grasp and implement. Would you like help adding constraints or visualizing this in Jjodel?"
       }
     ]
   }
