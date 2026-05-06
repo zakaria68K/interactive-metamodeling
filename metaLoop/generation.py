@@ -264,34 +264,45 @@ def build_challenge_sample_model(state: State, invoke_text: Callable[[str], str]
     """Generate sample model with different complexity levels to challenge the metamodel."""
     current_chunk = state.get("current_chunk", "")
     concept = state.get("current_concept", "")
-    
-    base_prompt = f"Create instances for '{concept}' that test the metamodel"
+    prev_sample = state.get("cumulative_sample_model", "")
+
+    base_prompt = f"Create ONE primary instance for '{concept}' that tests the metamodel"
     
     if challenge_level == "easy":
         challenge_prompt = (
-            "Create SIMPLE instances with basic attributes set.\n"
+            "Create a SIMPLE sample with basic attributes set.\n"
             "Use straightforward values and minimal relationships.\n"
             "Test only core functionality of the classes."
         )
     elif challenge_level == "moderate":
         challenge_prompt = (
-            "Create instances with COMPLEX relationships and edge cases.\n"
+            "Create a sample with COMPLEX relationships and edge cases.\n"
             "Use realistic but challenging attribute values.\n"
             "Test inheritance and reference constraints."
         )
     else:  # hard
         challenge_prompt = (
-            "Create instances that STRESS TEST the metamodel.\n"
+            "Create a sample that STRESS TESTS the metamodel.\n"
             "Use boundary values, complex hierarchies, and multiple relationships.\n"
             "Test all possible constraints and edge cases.\n"
             "Try to find gaps in the metamodel definition."
         )
     
-    prompt = (
+    prompt = ""
+    if prev_sample:
+        prompt += f"Previous sample already exists (DO NOT REPEAT IT):\n{prev_sample}\n\n"
+        prompt += "Reuse existing instance names exactly when linking to them.\n\n"
+
+    prompt += (
         f"{base_prompt}.\n\n{challenge_prompt}\n\n"
         "CRITICAL: Create ONLY INSTANCES ('create object'), NEVER class definitions.\n"
+        "Create exactly ONE primary object for the current concept.\n"
+        "Only create extra helper objects when a reference or containment requires them.\n"
+        "Every helper object MUST be connected to the primary object directly, or through an existing object from the previous sample.\n"
+        "Do not leave any object isolated or unreferenced.\n"
         "Use 'create object <ClassName> <name>'.\n"
         "Set attributes using 'set <attr> of <obj> to <value>'.\n"
+        "Set references using unquoted instance names, for example: 'set owner of car1 to person1' or 'add wheel1 to wheels of car1'.\n"
         "Output ONLY raw JJScript commands, nothing else.\n"
         f"Metamodel:\n{current_chunk}"
     )
@@ -462,6 +473,9 @@ def isolated_validation_step(
 ) -> State:
     """After human sees the normal validation, optionally run isolated validation."""
     if state.get("skip_isolated_validation"):
+        return {"wants_isolated_validation": False}
+
+    if not state.get("human_approved", False):
         return {"wants_isolated_validation": False}
 
     if state.get("current_index", 0) == 0 or not user_responder:
