@@ -5,6 +5,9 @@ from .state import State
 # Depending on the LLM used, the JSON can be malformed, which may cause the proposed concepts section to be skipped.
 
 
+MAX_INITIAL_CONCEPTS = 5
+
+
 def _normalize_yes_no(answer: str) -> str:
     return str(answer).strip().lower().rstrip(".?!")
 
@@ -45,7 +48,7 @@ def knowledge_elicitation(
         )
         base_prompt = (
             f"The user is not familiar with this domain. Their background: {background or 'nothing'}.\n"
-            "Propose 2 core metamodel concepts using plain, everyday language -- no jargon. "
+            f"Propose up to {MAX_INITIAL_CONCEPTS} core metamodel concepts using plain, everyday language -- no jargon. "
             "For each concept add a simple one-sentence explanation a non-expert can understand.\n"
             "Concept names must be singular with first letter uppercase (e.g., State, Transition).\n"
             "Reply with raw JSON only with key: concepts "
@@ -54,7 +57,7 @@ def knowledge_elicitation(
         )
     else:
         base_prompt = (
-            "Propose 2 core metamodel concepts for the request below. "
+            f"Propose up to {MAX_INITIAL_CONCEPTS} core metamodel concepts for the request below. "
             "Concept names must be singular with first letter uppercase (e.g., State, Transition). "
             "Reply with raw JSON only with key: concepts (array of strings).\n\n"
             f"Request:\n{intent}"
@@ -130,7 +133,7 @@ def decompose_concepts(state: State, invoke_json: Callable[[str], dict]) -> Stat
         }
 
     parsed = invoke_json(
-        "Decompose this request into 2 core metamodel concepts and identify any missing "
+        f"Decompose this request into up to {MAX_INITIAL_CONCEPTS} core metamodel concepts and identify any missing "
         "essential functionalities.\n\n"
         "Concept names must be singular with first letter uppercase (e.g., State, Transition).\n"
         "Reply with raw JSON ONLY, no markdown, no extra text. Keys: "

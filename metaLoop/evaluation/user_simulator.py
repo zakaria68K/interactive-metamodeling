@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 
 
 load_dotenv()
@@ -20,8 +20,9 @@ class SimulatedUserProfile:
 
 class ProfileUserLLM:
     def __init__(self, profile: SimulatedUserProfile):
-        model_name = profile.model_name or os.getenv("EVAL_OPENAI_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-        llm = ChatOpenAI(model=model_name, max_retries=2)
+        model_name = profile.model_name or os.getenv("EVAL_OLLAMA_MODEL", "gemma4:26b")
+        base_url = os.getenv("EVAL_OLLAMA_BASE_URL", "https://ollama.kher.nl")
+        llm = ChatOllama(model=model_name, base_url=base_url)
         self.profile = profile
         self.history: list[dict[str, str]] = []
         self.chain = ChatPromptTemplate.from_messages([

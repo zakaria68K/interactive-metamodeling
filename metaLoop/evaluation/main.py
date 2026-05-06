@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 import sys
@@ -16,13 +17,99 @@ from metaLoop.evaluation.user_simulator import ProfileUserLLM, SimulatedUserProf
 from metaLoop.metamodeling_agent import MetamodelingAgent
 
 
+GENERATED_SAMPLE_DIR = ROOT / "metaLoop" / "evaluation" / "sample_files" / "generated"
+
+DOMAIN_CONFIGS = {
+    "state_machine": {
+        "prompt": "I want a state machine metamodel for interactive applications.",
+        "users": [
+            ("events", ["State", "Event", "Transition", "Trigger", "StateMachine"]),
+            ("transitions", ["State", "Transition", "Guard", "Action", "Event"]),
+            ("start_end", ["InitialState", "FinalState", "State", "Transition", "StateMachine"]),
+            ("workflow_container", ["StateMachine", "State", "Transition", "Region", "Event"]),
+            ("triggering", ["Trigger", "Event", "Transition", "State", "Guard"]),
+            ("behavior", ["Action", "Transition", "Event", "State", "Guard"]),
+            ("conditions", ["Guard", "Transition", "State", "Event", "Action"]),
+            ("hierarchy", ["Region", "State", "StateMachine", "Transition", "Event"]),
+            ("navigation", ["State", "Trigger", "Transition", "Action", "FinalState"]),
+            ("teaching", ["State", "InitialState", "FinalState", "Transition", "Event"]),
+        ],
+    },
+    "university": {
+        "prompt": "I want a university course management metamodel.",
+        "users": [
+            ("enrollment", ["Student", "Enrollment", "Course", "Semester", "Program"]),
+            ("teaching", ["Professor", "Course", "Department", "Classroom", "Semester"]),
+            ("programs", ["Program", "Student", "Course", "Department", "Professor"]),
+            ("departments", ["Department", "Professor", "Course", "Semester", "Classroom"]),
+            ("grading", ["Grade", "Assignment", "Student", "Course", "Professor"]),
+            ("semester_planning", ["Semester", "Course", "Classroom", "Professor", "Department"]),
+            ("classrooms", ["Classroom", "Course", "Semester", "Professor", "Student"]),
+            ("course_progress", ["Student", "Assignment", "Grade", "Course", "Program"]),
+            ("offerings", ["Department", "Course", "Semester", "Professor", "Enrollment"]),
+            ("advising", ["Student", "Program", "Professor", "Course", "Grade"]),
+        ],
+    },
+    "library": {
+        "prompt": "I want a library lending metamodel.",
+        "users": [
+            ("borrowing", ["Member", "Loan", "Book", "Copy", "Fine"]),
+            ("catalog", ["Book", "Category", "Author", "Copy", "Library"]),
+            ("authors", ["Book", "Author", "Category", "Library", "Copy"]),
+            ("returns", ["Loan", "Fine", "Book", "Member", "Librarian"]),
+            ("reservations", ["Reservation", "Member", "Book", "Copy", "Librarian"]),
+            ("staff", ["Librarian", "Library", "Member", "Loan", "Reservation"]),
+            ("copies", ["Copy", "Book", "Category", "Library", "Loan"]),
+            ("availability", ["Book", "Copy", "Loan", "Member", "Reservation"]),
+            ("membership", ["Member", "Library", "Loan", "Fine", "Reservation"]),
+            ("circulation", ["Book", "Member", "Loan", "Copy", "Librarian"]),
+        ],
+    },
+    "hospital": {
+        "prompt": "I want a hospital appointment management metamodel.",
+        "users": [
+            ("appointments", ["Patient", "Appointment", "Doctor", "Department", "MedicalRecord"]),
+            ("doctors", ["Doctor", "Appointment", "Department", "Patient", "Diagnosis"]),
+            ("departments", ["Department", "Doctor", "Appointment", "Room", "Nurse"]),
+            ("records", ["Patient", "MedicalRecord", "Diagnosis", "Prescription", "Treatment"]),
+            ("prescriptions", ["Prescription", "Patient", "Doctor", "Appointment", "MedicalRecord"]),
+            ("treatments", ["Treatment", "Diagnosis", "Patient", "Doctor", "Room"]),
+            ("rooms", ["Room", "Patient", "Nurse", "Appointment", "Treatment"]),
+            ("nursing", ["Nurse", "Patient", "Room", "Treatment", "MedicalRecord"]),
+            ("consultations", ["Doctor", "Diagnosis", "Appointment", "Patient", "Prescription"]),
+            ("care_flow", ["Patient", "Appointment", "Prescription", "Treatment", "MedicalRecord"]),
+        ],
+    },
+    "ecommerce": {
+        "prompt": "I want an e-commerce order management metamodel.",
+        "users": [
+            ("orders", ["Order", "Product", "Customer", "OrderItem", "Payment"]),
+            ("shipping", ["Order", "Shipment", "Address", "Customer", "Inventory"]),
+            ("payments", ["Order", "Payment", "Customer", "Product", "OrderItem"]),
+            ("customers", ["Customer", "Address", "Cart", "Order", "Payment"]),
+            ("catalog", ["Product", "Category", "Inventory", "Cart", "OrderItem"]),
+            ("cart", ["Cart", "Product", "Customer", "OrderItem", "Order"]),
+            ("line_items", ["Order", "OrderItem", "Product", "Payment", "Shipment"]),
+            ("stock", ["Inventory", "Product", "Category", "OrderItem", "Shipment"]),
+            ("checkout", ["Customer", "Cart", "Payment", "Order", "Address"]),
+            ("fulfillment", ["Order", "Shipment", "Inventory", "Product", "OrderItem"]),
+        ],
+    },
+}
+
+
 @dataclass
 class MethodResult:
     name: str
-    concepts: Set[str]
+    initial_concepts: Set[str]
+    final_concepts: Set[str]
+    initial_precision: float
+    initial_recall: float
+    initial_f1: float
     precision: float
     recall: float
     f1: float
+    initial_transcript: list[dict[str, str]]
     transcript: list[dict[str, str]]
 
 
@@ -61,7 +148,20 @@ def read_sample_file(file_path: str | None) -> str:
     return resolved_path.read_text(encoding="utf-8", errors="ignore")
 
 
+
+
+
 def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, ) -> MethodResult:
+    initial_user_llm = ProfileUserLLM(profile)
+    initial_state = agent.run_concepts_only(
+        profile.prompt,
+        user_responder=initial_user_llm.respond,
+    )
+    initial_concepts = normalize(initial_state.get("concepts", []))
+    initial_precision, initial_recall, initial_f1 = evaluate_prediction(
+        normalize(profile.target_concepts), initial_concepts
+    )
+
     user_llm = ProfileUserLLM(profile)
     result = agent.run_iterative(
         profile.prompt,
@@ -72,9 +172,21 @@ def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, ) -
             "skip_isolated_validation": True,
         },
     )
-    predicted = normalize(result.get("concepts", []))
-    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
-    return MethodResult("interactive", predicted, precision, recall, f1, list(user_llm.history))
+    final_concepts = normalize(result.get("concepts", []))
+    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), final_concepts)
+    return MethodResult(
+        "interactive",
+        initial_concepts,
+        final_concepts,
+        initial_precision,
+        initial_recall,
+        initial_f1,
+        precision,
+        recall,
+        f1,
+        list(initial_user_llm.history),
+        list(user_llm.history),
+    )
 
 
 def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
@@ -84,7 +196,19 @@ def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile) 
     predicted = normalize(state.get("concepts", []))
     precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": ""}]
-    return MethodResult("no_elicitation", predicted, precision, recall, f1, transcript)
+    return MethodResult(
+        "no_elicitation",
+        predicted,
+        predicted,
+        precision,
+        recall,
+        f1,
+        precision,
+        recall,
+        f1,
+        transcript,
+        transcript,
+    )
 
 
 def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> MethodResult:
@@ -93,7 +217,19 @@ def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> 
     predicted = normalize(extracted.get("concepts", []))
     precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": metamodel_text}]
-    return MethodResult("one_shot", predicted, precision, recall, f1, transcript)
+    return MethodResult(
+        "one_shot",
+        predicted,
+        predicted,
+        precision,
+        recall,
+        f1,
+        precision,
+        recall,
+        f1,
+        transcript,
+        transcript,
+    )
 
 
 def write_report(rows: list[dict]) -> Path:
@@ -104,37 +240,25 @@ def write_report(rows: list[dict]) -> Path:
     return report_path
 
 
+def build_profiles() -> list[SimulatedUserProfile]:
+    profiles: list[SimulatedUserProfile] = []
+    for domain_name, config in DOMAIN_CONFIGS.items():
+        for index, (suffix, target_concepts) in enumerate(config["users"], start=1):
+            sample_path = GENERATED_SAMPLE_DIR / f"{domain_name}_{suffix}.md"
+            profiles.append(
+                SimulatedUserProfile(
+                    profile_id=f"{domain_name}_user_{index:02d}_{suffix}",
+                    prompt=config["prompt"],
+                    target_concepts=target_concepts,
+                    sample_file_path=str(sample_path.relative_to(ROOT)),
+                )
+            )
+    return profiles
+
+
 def main() -> None:
-    runs = int(os.getenv("EVAL_RUNS", "3"))
-    profiles = [
-        SimulatedUserProfile(
-            profile_id="user_a_event_driven",
-            prompt="I want a state machine metamodel for interactive applications.",
-            target_concepts=["State", "Event"],
-            sample_file_path=os.getenv(
-                "EVAL_SAMPLE_FILE_A",
-                "metaLoop/evaluation/sample_files/state_machine_event_driven.pdf",
-            ),
-        ),
-        SimulatedUserProfile(
-            profile_id="user_b_hierarchical",
-            prompt="I want a state machine metamodel for complex systems.",
-            target_concepts=["State", "Region"],
-            sample_file_path=os.getenv(
-                "EVAL_SAMPLE_FILE_B",
-                "metaLoop/evaluation/sample_files/state_machine_hierarchical.pdf",
-            ),
-        ),
-        SimulatedUserProfile(
-            profile_id="user_c_teaching",
-            prompt="I want a state machine metamodel for teaching beginners.",
-            target_concepts=["State", "FinalState"],
-            sample_file_path=os.getenv(
-                "EVAL_SAMPLE_FILE_C",
-                "metaLoop/evaluation/sample_files/state_machine_teaching.pdf",
-            ),
-        ),
-    ]
+    runs = int(os.getenv("EVAL_RUNS", "1"))
+    profiles = build_profiles()
 
     agent = MetamodelingAgent()
     extractor = ConceptExtractor()
@@ -145,7 +269,9 @@ def main() -> None:
         ("one_shot", lambda profile: run_one_shot(extractor, profile)),
     ]
 
-    per_method_f1: dict[str, List[float]] = {name: [] for name, _ in methods}
+    per_method_metrics: dict[str, dict[str, List[float]]] = {
+        name: {"initial_f1": [], "final_f1": []} for name, _ in methods
+    }
     report_rows: list[dict] = []
 
     for run_idx in range(1, runs + 1):
@@ -156,28 +282,36 @@ def main() -> None:
             print(f"Sample file: {profile.sample_file_path or '(none)'}")
             for method_name, runner in methods:
                 result = runner(profile)
-                per_method_f1[method_name].append(result.f1)
+                per_method_metrics[method_name]["initial_f1"].append(result.initial_f1)
+                per_method_metrics[method_name]["final_f1"].append(result.f1)
                 report_rows.append({
                     "run": run_idx,
                     "profile_id": profile.profile_id,
                     "sample_file_path": profile.sample_file_path,
                     "method": result.name,
                     "target": sorted(normalize(profile.target_concepts)),
-                    "predicted": sorted(result.concepts),
+                    "initial_proposed_concepts": sorted(result.initial_concepts),
+                    "final_concepts": sorted(result.final_concepts),
+                    "predicted": sorted(result.final_concepts),
+                    "initial_precision": result.initial_precision,
+                    "initial_recall": result.initial_recall,
+                    "initial_f1": result.initial_f1,
                     "precision": result.precision,
                     "recall": result.recall,
                     "f1": result.f1,
+                    "initial_transcript": result.initial_transcript,
                     "transcript": result.transcript,
                 })
                 print(
-                    f"{result.name:>14} | predicted={sorted(result.concepts)} "
-                    f"| P={result.precision:.3f} R={result.recall:.3f} F1={result.f1:.3f}"
+                    f"{result.name:>14} | initial={sorted(result.initial_concepts)} | final={sorted(result.final_concepts)} "
+                    f"| initial F1={result.initial_f1:.3f} | final F1={result.f1:.3f}"
                 )
 
     print("\n=== Summary ===")
     for method_name, _ in methods:
-        avg_f1 = sum(per_method_f1[method_name]) / len(per_method_f1[method_name])
-        print(f"{method_name:>14} | avg_f1={avg_f1:.3f}")
+        avg_initial_f1 = sum(per_method_metrics[method_name]["initial_f1"]) / len(per_method_metrics[method_name]["initial_f1"])
+        avg_final_f1 = sum(per_method_metrics[method_name]["final_f1"]) / len(per_method_metrics[method_name]["final_f1"])
+        print(f"{method_name:>14} | avg_initial_f1={avg_initial_f1:.3f} | avg_final_f1={avg_final_f1:.3f}")
 
     report_path = write_report(report_rows)
     print(f"\nReport: {report_path}")
