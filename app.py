@@ -107,6 +107,50 @@ def _is_yes_no_question(question: str) -> bool:
     return any(m in q for m in ["yes/no", "yes or no", "y/n", "are you", "do you", "is it", "should", "would", "can"])
 
 
+def _highlight_spans(file_content: str, sentence_highlights: list[dict]) -> list[tuple[int, int, str]]:
+    spans: list[tuple[int, int, str]] = []
+    for item in sentence_highlights:
+        sentence = item.get("sentence", "").strip()
+        concept = item.get("concept", "")
+        if not sentence:
+            continue
+        pattern = r"\s+".join(re.escape(word) for word in sentence.split())
+        match = re.search(pattern, file_content, re.IGNORECASE)
+        if match:
+            spans.append((match.start(), match.end(), concept))
+
+    spans.sort(key=lambda span: span[0])
+    merged: list[tuple[int, int, str]] = []
+    for start, end, concept in spans:
+        if merged and start < merged[-1][1]:
+            continue
+        merged.append((start, end, concept))
+    return merged
+
+
+def _compute_coverage_percentage(file_content: str, spans: list[tuple[int, int, str]]) -> int:
+    total_chars = sum(1 for char in file_content if not char.isspace())
+    if total_chars == 0:
+        return 0
+
+    covered_chars = 0
+    for start, end, _concept in spans:
+        covered_chars += sum(1 for char in file_content[start:end] if not char.isspace())
+
+    return round((covered_chars / total_chars) * 100)
+
+
+def _format_elicitation_question(question: str, context: dict) -> str:
+    if context.get("validation_stage") != "challenge_selection":
+        return question
+
+    concept = str(context.get("current_concept", "")).strip()
+    if not concept:
+        return question
+
+    return f"Validation challenge for **{concept}**\n\n{question}"
+
+
 # ── Coverage analysis ──────────────────────────────────────────────────────────
 def _run_coverage_analysis(file_content: str, concepts: list[str], metamodel: str) -> dict:
     client = LLMClient()
@@ -131,10 +175,11 @@ def _run_coverage_analysis(file_content: str, concepts: list[str], metamodel: st
         "Return ONLY valid JSON with these keys:\n"
         "  sentence_highlights: array of {{sentence: string, concept: string}}\n"
         "  new_concepts: array of concept names found in doc but NOT in the full list above\n"
-        "  coverage_percentage: integer 0-100 (how much of the doc is covered by modeled concepts)\n"
     )
 
     result = client.invoke_json(prompt)
+    coverage_spans = _highlight_spans(file_content, result.get("sentence_highlights", []))
+    result["coverage_percentage"] = _compute_coverage_percentage(file_content, coverage_spans)
     result["not_yet_modeled"] = not_yet_modeled
     result["modeled_concepts"] = modeled
     return result
@@ -147,23 +192,8 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
     modeled         = analysis.get("modeled_concepts", [])
     sentence_highlights = analysis.get("sentence_highlights", [])
 
-    spans: list[tuple[int, int, str]] = []
-    for item in sentence_highlights:
-        sentence = item.get("sentence", "").strip()
-        concept  = item.get("concept", "")
-        if not sentence:
-            continue
-        pattern = r"\s+".join(re.escape(w) for w in sentence.split())
-        m = re.search(pattern, file_content, re.IGNORECASE)
-        if m:
-            spans.append((m.start(), m.end(), concept))
-
-    spans.sort(key=lambda x: x[0])
-    merged: list[tuple[int, int, str]] = []
-    for span in spans:
-        if merged and span[0] < merged[-1][1]:
-            continue
-        merged.append(span)
+    merged = _highlight_spans(file_content, sentence_highlights)
+    coverage_pct = _compute_coverage_percentage(file_content, merged)
 
     parts: list[str] = []
     pos = 0
@@ -258,11 +288,16 @@ def _run_agent(sess: _Session, prompt: str) -> None:
     agent = MetamodelingAgent()
 
     def user_responder(question: str, context: dict) -> str:
+        if context.get("validation_stage") == "file_new_concepts_selection":
+            sess.log.append(f"[{_ts()}] File concept suggestions handled via coverage checkbox UI.")
+            return "none"
+
         if context.get("validation_stage") == "challenge_selection":
-            sess.chat.append({"role": "assistant", "content": question})
+            formatted_question = _format_elicitation_question(question, context)
+            sess.chat.append({"role": "assistant", "content": formatted_question})
             sess.waiting_elicitation = True
-            sess.current_elicitation_question = question
-            sess.elicit_q.put(question)
+            sess.current_elicitation_question = formatted_question
+            sess.elicit_q.put(formatted_question)
             answer = sess.elicit_a.get(block=True)
             sess.waiting_elicitation = False
             sess.current_elicitation_question = ""

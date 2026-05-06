@@ -404,7 +404,13 @@ def dual_validation(
             "3. Hard - Stress test with boundary values and edge cases\n"
             "Which level do you want? (easy/moderate/hard)"
         )
-        response = user_responder(challenge_question, {"validation_stage": "challenge_selection"})
+        response = user_responder(
+            challenge_question,
+            {
+                "validation_stage": "challenge_selection",
+                "current_concept": state.get("current_concept", ""),
+            },
+        )
         if response.lower() in ["easy", "1"]:
             challenge_level = "easy"
         elif response.lower() in ["hard", "3"]:
