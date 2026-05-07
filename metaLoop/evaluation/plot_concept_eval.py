@@ -35,42 +35,37 @@ def load_summary(report_path: Path) -> dict[str, dict[str, float]]:
     return summary
 
 
-def plot_summary(summary: dict[str, dict[str, float]], output_path: Path) -> Path:
+def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_profiles: int) -> Path:
     methods = ["interactive", "no_elicitation", "one_shot"]
-    labels = [name.replace("_", " ") for name in methods]
+    labels = ["Interactive", "No Elicitation", "One Shot"]
     x_positions = list(range(len(methods)))
-    precision_values = [summary.get(name, {}).get("avg_precision", 0.0) for name in methods]
-    recall_values = [summary.get(name, {}).get("avg_recall", 0.0) for name in methods]
-    f1_values = [summary.get(name, {}).get("avg_f1", 0.0) for name in methods]
-    series = [
-        ("Precision", precision_values, "#1b9e77", -0.18),
-        ("Recall", recall_values, "#7570b3", 0.0),
-        ("F1", f1_values, "#d95f02", 0.18),
-    ]
+    colors = ["#1b9e77", "#7570b3", "#d95f02"]
 
-    fig, ax = plt.subplots(figsize=(7.2, 4.8), constrained_layout=True)
-    fig.suptitle("Concept Evaluation Summary", fontsize=16, fontweight="bold")
+    fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
+    fig.suptitle("Concept Evaluation — Average F1 Score", fontsize=14, fontweight="bold")
 
-    for label, values, color, offset in series:
-        shifted_positions = [x + offset for x in x_positions]
-        ax.vlines(shifted_positions, 0, values, color=color, linewidth=2.2, alpha=0.95, label=label)
-        ax.scatter(shifted_positions, values, color=color, s=38, zorder=3)
+    f1_values = [summary.get(m, {}).get("avg_f1", 0.0) for m in methods]
 
-    ax.set_title("Average Metrics by Method")
-    ax.set_ylim(0, 1)
-    ax.set_ylabel("Score")
-    ax.set_xticks(x_positions, labels)
+    bars = ax.bar(x_positions, f1_values, color=colors, width=0.5, alpha=0.88, zorder=3)
+    for bar, value in zip(bars, f1_values):
+        ax.text(bar.get_x() + bar.get_width() / 2, value + 0.015,
+                f"{value:.3f}", ha="center", va="bottom", fontsize=11, fontweight="bold")
+
+    ax.set_ylim(0, 1.15)
+    ax.set_ylabel("F1 Score", fontsize=11)
+    ax.set_xticks(x_positions, labels, fontsize=11)
     ax.grid(axis="y", linestyle="--", alpha=0.35)
     ax.set_axisbelow(True)
-    for tick in ax.get_xticklabels():
-        tick.set_rotation(12)
-        tick.set_ha("right")
 
-    for _label, values, color, offset in series:
-        for x_pos, value in zip(x_positions, values):
-            ax.text(x_pos + offset, value + 0.02, f"{value:.3f}", ha="center", va="bottom", fontsize=9, color=color)
-
-    ax.legend(frameon=False, loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.02))
+    ax.text(
+        0.98, 0.97,
+        f"n = {total_profiles} profiles\n1 domain × users per domain",
+        transform=ax.transAxes,
+        ha="right", va="top",
+        fontsize=8.5,
+        color="#444444",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="#cccccc", alpha=0.8),
+    )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200, bbox_inches="tight")
@@ -79,8 +74,10 @@ def plot_summary(summary: dict[str, dict[str, float]], output_path: Path) -> Pat
 
 
 def main() -> None:
+    rows = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+    total_profiles = len({r["profile_id"] for r in rows})
     summary = load_summary(REPORT_PATH)
-    output_path = plot_summary(summary, OUTPUT_PATH)
+    output_path = plot_summary(summary, OUTPUT_PATH, total_profiles)
     print(output_path)
 
 

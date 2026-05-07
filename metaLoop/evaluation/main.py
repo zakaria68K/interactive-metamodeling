@@ -101,15 +101,10 @@ DOMAIN_CONFIGS = {
 @dataclass
 class MethodResult:
     name: str
-    initial_concepts: Set[str]
     final_concepts: Set[str]
-    initial_precision: float
-    initial_recall: float
-    initial_f1: float
     precision: float
     recall: float
     f1: float
-    initial_transcript: list[dict[str, str]]
     transcript: list[dict[str, str]]
 
 
@@ -151,17 +146,7 @@ def read_sample_file(file_path: str | None) -> str:
 
 
 
-def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, ) -> MethodResult:
-    initial_user_llm = ProfileUserLLM(profile)
-    initial_state = agent.run_concepts_only(
-        profile.prompt,
-        user_responder=initial_user_llm.respond,
-    )
-    initial_concepts = normalize(initial_state.get("concepts", []))
-    initial_precision, initial_recall, initial_f1 = evaluate_prediction(
-        normalize(profile.target_concepts), initial_concepts
-    )
-
+def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
     user_llm = ProfileUserLLM(profile)
     result = agent.run_iterative(
         profile.prompt,
@@ -176,15 +161,10 @@ def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile, ) -
     precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), final_concepts)
     return MethodResult(
         "interactive",
-        initial_concepts,
         final_concepts,
-        initial_precision,
-        initial_recall,
-        initial_f1,
         precision,
         recall,
         f1,
-        list(initial_user_llm.history),
         list(user_llm.history),
     )
 
@@ -199,14 +179,9 @@ def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile) 
     return MethodResult(
         "no_elicitation",
         predicted,
-        predicted,
         precision,
         recall,
         f1,
-        precision,
-        recall,
-        f1,
-        transcript,
         transcript,
     )
 
@@ -220,14 +195,9 @@ def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> 
     return MethodResult(
         "one_shot",
         predicted,
-        predicted,
         precision,
         recall,
         f1,
-        precision,
-        recall,
-        f1,
-        transcript,
         transcript,
     )
 
@@ -259,6 +229,9 @@ def build_profiles() -> list[SimulatedUserProfile]:
 def main() -> None:
     runs = int(os.getenv("EVAL_RUNS", "1"))
     profiles = build_profiles()
+    limit = int(os.getenv("EVAL_LIMIT", "0"))
+    if limit > 0:
+        profiles = profiles[:limit]
 
     agent = MetamodelingAgent()
     extractor = ConceptExtractor()
@@ -269,9 +242,7 @@ def main() -> None:
         ("one_shot", lambda profile: run_one_shot(extractor, profile)),
     ]
 
-    per_method_metrics: dict[str, dict[str, List[float]]] = {
-        name: {"initial_f1": [], "final_f1": []} for name, _ in methods
-    }
+    per_method_metrics: dict[str, List[float]] = {name: [] for name, _ in methods}
     report_rows: list[dict] = []
 
     for run_idx in range(1, runs + 1):
@@ -282,36 +253,28 @@ def main() -> None:
             print(f"Sample file: {profile.sample_file_path or '(none)'}")
             for method_name, runner in methods:
                 result = runner(profile)
-                per_method_metrics[method_name]["initial_f1"].append(result.initial_f1)
-                per_method_metrics[method_name]["final_f1"].append(result.f1)
+                per_method_metrics[method_name].append(result.f1)
                 report_rows.append({
                     "run": run_idx,
                     "profile_id": profile.profile_id,
                     "sample_file_path": profile.sample_file_path,
                     "method": result.name,
                     "target": sorted(normalize(profile.target_concepts)),
-                    "initial_proposed_concepts": sorted(result.initial_concepts),
-                    "final_concepts": sorted(result.final_concepts),
                     "predicted": sorted(result.final_concepts),
-                    "initial_precision": result.initial_precision,
-                    "initial_recall": result.initial_recall,
-                    "initial_f1": result.initial_f1,
                     "precision": result.precision,
                     "recall": result.recall,
                     "f1": result.f1,
-                    "initial_transcript": result.initial_transcript,
                     "transcript": result.transcript,
                 })
                 print(
-                    f"{result.name:>14} | initial={sorted(result.initial_concepts)} | final={sorted(result.final_concepts)} "
-                    f"| initial F1={result.initial_f1:.3f} | final F1={result.f1:.3f}"
+                    f"{result.name:>14} | predicted={sorted(result.final_concepts)} "
+                    f"| F1={result.f1:.3f}"
                 )
 
     print("\n=== Summary ===")
     for method_name, _ in methods:
-        avg_initial_f1 = sum(per_method_metrics[method_name]["initial_f1"]) / len(per_method_metrics[method_name]["initial_f1"])
-        avg_final_f1 = sum(per_method_metrics[method_name]["final_f1"]) / len(per_method_metrics[method_name]["final_f1"])
-        print(f"{method_name:>14} | avg_initial_f1={avg_initial_f1:.3f} | avg_final_f1={avg_final_f1:.3f}")
+        avg_f1 = sum(per_method_metrics[method_name]) / len(per_method_metrics[method_name])
+        print(f"{method_name:>14} | avg_f1={avg_f1:.3f}")
 
     report_path = write_report(report_rows)
     print(f"\nReport: {report_path}")
