@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from dataclasses import dataclass
 from pathlib import Path
 import sys
@@ -123,11 +122,6 @@ def precision_recall_f1(expected: Set[str], predicted: Set[str]) -> tuple[float,
     return precision, recall, f1
 
 
-def evaluate_prediction(target: Set[str], predicted: Set[str]) -> tuple[float, float, float]:
-    precision, recall, f1 = precision_recall_f1(target, predicted)
-    return precision, recall, f1
-
-
 def read_sample_file(file_path: str | None) -> str:
     if not file_path:
         return ""
@@ -143,9 +137,6 @@ def read_sample_file(file_path: str | None) -> str:
     return resolved_path.read_text(encoding="utf-8", errors="ignore")
 
 
-
-
-
 def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
     user_llm = ProfileUserLLM(profile)
     result = agent.run_iterative(
@@ -158,7 +149,7 @@ def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> 
         },
     )
     final_concepts = normalize(result.get("concepts", []))
-    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), final_concepts)
+    precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), final_concepts)
     return MethodResult(
         "interactive",
         final_concepts,
@@ -174,7 +165,7 @@ def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile) 
     state.update(gather_intent(state))
     state.update(decompose_concepts(state, agent.llm_client.invoke_json))
     predicted = normalize(state.get("concepts", []))
-    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
+    precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), predicted)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": ""}]
     return MethodResult(
         "no_elicitation",
@@ -190,7 +181,7 @@ def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> 
     metamodel_text = generate_direct(profile.prompt)
     extracted = extractor.extract(profile.prompt, metamodel_text)
     predicted = normalize(extracted.get("concepts", []))
-    precision, recall, f1 = evaluate_prediction(normalize(profile.target_concepts), predicted)
+    precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), predicted)
     transcript = [{"stage": "prompt", "question": profile.prompt, "answer": metamodel_text}]
     return MethodResult(
         "one_shot",

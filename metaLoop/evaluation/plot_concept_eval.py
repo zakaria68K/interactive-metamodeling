@@ -39,7 +39,7 @@ def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_
     methods = ["interactive", "no_elicitation", "one_shot"]
     labels = ["Interactive", "No Elicitation", "One Shot"]
     x_positions = list(range(len(methods)))
-    colors = ["#1b9e77", "#7570b3", "#d95f02"]
+    colors = ["#000000", "#06005d", "#00569D"]
 
     fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
     fig.suptitle("Concept Evaluation — Average F1 Score", fontsize=14, fontweight="bold")
