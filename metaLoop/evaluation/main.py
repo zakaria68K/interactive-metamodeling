@@ -83,23 +83,6 @@ def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> 
     )
 
 
-def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
-    state = {"user_prompt": profile.prompt}
-    state.update(gather_intent(state))
-    state.update(decompose_concepts(state, agent.llm_client.invoke_json))
-    predicted = normalize(state.get("concepts", []))
-    precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), predicted)
-    transcript = [{"stage": "prompt", "question": profile.prompt, "answer": ""}]
-    return MethodResult(
-        "no_elicitation",
-        predicted,
-        precision,
-        recall,
-        f1,
-        transcript,
-    )
-
-
 def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> MethodResult:
     file_content = read_sample_file(profile.sample_file_path)
     metamodel_text = generate_direct(profile.prompt, file_content)
@@ -153,7 +136,6 @@ def main() -> None:
 
     methods: List[tuple[str, Callable[[SimulatedUserProfile], MethodResult]]] = [
         ("interactive", lambda profile: run_interactive(agent, profile)),
-        ("no_elicitation", lambda profile: run_no_elicitation(agent, profile)),
         ("one_shot", lambda profile: run_one_shot(extractor, profile)),
     ]
 
