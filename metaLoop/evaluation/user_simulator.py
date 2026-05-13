@@ -17,7 +17,6 @@ class SimulatedUserProfile:
     sample_file_path: str | None = None
     model_name: str | None = None
 
-
 class ProfileUserLLM:
     def __init__(self, profile: SimulatedUserProfile):
         model_name = profile.model_name or os.getenv("EVAL_OLLAMA_MODEL", "gemma4:26b")
@@ -25,25 +24,67 @@ class ProfileUserLLM:
         llm = ChatOllama(model=model_name, base_url=base_url)
         self.profile = profile
         self.history: list[dict[str, str]] = []
+        system_message = (
+            "You simulate one specific user in a metamodel elicitation conversation.\n\n"
+
+            "## Your Profile (read before every reply)\n"
+            f"- Profile ID   : {profile.profile_id}\n"
+            f"- Domain request: {profile.prompt}\n"
+            f"- Your target concepts (your complete domain vocabulary — nothing more): "
+            f"{', '.join(profile.target_concepts)}\n"
+            # "Consistently Simulating Human Personas with Multi-Turn Reinforcement Learning"
+            # Off-the-shelf LLMs drift from assigned personas across long interactions.
+            # The paper motivates repeated reinforcement of persona constraints
+            # to preserve behavioral consistency across turns.
+            "\n## Persona consistency\n"
+            "You must consistently behave as the same user throughout the entire conversation. "
+            "Maintain the same knowledge level, vocabulary, and perspective across turns.\n"
+            # "I like fish, especially dolphins: Addressing Contradictions in Dialogue Modeling"
+            # Dialogue systems frequently contradict prior conversational behavior.
+            # Role/persona consistency must persist over multi-turn dialogue.
+            "Do not contradict earlier statements or suddenly change your knowledge or preferences.\n"
+            "\n## What you know\n"
+            # "How Reliable is Your Simulator?"
+            # Simulated users leak hidden target information and system-internal knowledge,
+            # producing unrealistic interactions and inflated evaluation metrics.
+            "You are NOT a domain expert. "
+            "You have a partial and limited understanding of the domain.\n"
+            "You only know the concepts listed in your target concept list. "
+            "Do not use concepts, terminology, relationships, or examples outside that list.\n"
+            "If asked about unknown concepts, respond naturally with uncertainty, confusion, "
+            "or lack of familiarity.\n"
+            "Stay aligned with your assigned knowledge boundaries throughout the conversation.\n"
+
+            "\n## Conversational behavior\n"
+            # "User Simulation with Large Language Models for Evaluating Task-Oriented Dialogue"
+            # The goal is realistic human-like interaction behavior rather than
+            # artificially maximizing task success. Evaluation should reflect human interaction patterns in task-oriented dialogue systems
+            "Reveal your knowledge naturally during conversation rather than listing everything immediately.\n"
+            "Only mention target concepts when they are relevant to the current question or discussion.\n"
+            "Do not force concepts into unrelated answers.\n"
+            # Goal Alignment in LLM-Based User Simulators 
+            # Goal state tracking improves consistency across turns.
+            "Internally keep track of which concepts have already appeared in the conversation.\n"
+            "If a proposed concept is not part of your target concept list, reject it naturally or express unfamiliarity.\n"
+
+            "\n## How to answer\n"
+            "- Familiarity questions     : answer yes or no only.\n"
+            "- Agreement questions       : say yes ONLY if the concept clearly matches one "
+            "of your target concepts; say no otherwise, even if it sounds plausible.\n"
+            "- Background/feedback questions: mention only concepts from your target list.\n"
+            "- All replies: plain text, no markdown, no explanations, short and natural.\n"
+        )
+
         self.chain = ChatPromptTemplate.from_messages([
+            ("system", system_message),
             (
-                "system",
-                "You simulate one specific user in a metamodel elicitation conversation. "
-                "Stay consistent with the user's goal."
-                "Answer only with the user's reply text, no explanations, no markdown. "
-                "Keep replies short and natural. "
-                "For familiarity questions, answer yes or no. "
-                "For agreement questions, answer yes only if the proposed concepts clearly match the user's goal; otherwise answer no. "
-                "For background or feedback questions, mention only the concepts relevant to the user's goal.",
-            ),
-            (
+                # Goal Alignment in LLM-Based User Simulators (2025)-
+                # "State-of-the-art LLM-based user simulators struggle to maintain consistent goal alignment "
+                # Goal state must be tracked turn-by-turn and fed back into the prompt.
                 "human",
-                "Profile id: {profile_id}\n"
-                "Domain request: {prompt}\n"
-                "Target concepts: {target_concepts}\n"
                 "Question: {question}\n"
-                "Context: {context}\n"
-                "Reply as that user.",
+                "Conversation context: {context}\n\n"
+                "Reply as this user.",
             ),
         ]) | llm
 
