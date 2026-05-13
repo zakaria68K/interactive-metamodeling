@@ -36,30 +36,32 @@ def load_summary(report_path: Path) -> dict[str, dict[str, float]]:
 
 
 def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_profiles: int) -> Path:
-    methods = ["interactive", "no_elicitation", "one_shot"]
-    labels = ["Interactive", "No Elicitation", "One Shot"]
-    x_positions = list(range(len(methods)))
-    colors = ["#000000", "#06005d", "#00569D"]
+    methods = ["interactive", "one_shot"]
+    labels = ["Interactive", "One Shot"]
+    x_positions = [0, 0.35]
+    colors = ["#000000", "#00569D"]
 
     fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
     fig.suptitle("Concept Evaluation — Average F1 Score", fontsize=14, fontweight="bold")
 
     f1_values = [summary.get(m, {}).get("avg_f1", 0.0) for m in methods]
 
-    bars = ax.bar(x_positions, f1_values, color=colors, width=0.5, alpha=0.88, zorder=3)
+    bars = ax.bar(x_positions, f1_values, color=colors, width=0.15, alpha=0.88, zorder=3)
     for bar, value in zip(bars, f1_values):
         ax.text(bar.get_x() + bar.get_width() / 2, value + 0.015,
                 f"{value:.3f}", ha="center", va="bottom", fontsize=11, fontweight="bold")
 
     ax.set_ylim(0, 1.15)
     ax.set_ylabel("F1 Score", fontsize=11)
-    ax.set_xticks(x_positions, labels, fontsize=11)
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels, fontsize=11)
+    ax.set_xlim(-0.3, 0.65)
     ax.grid(axis="y", linestyle="--", alpha=0.35)
     ax.set_axisbelow(True)
 
     ax.text(
         0.98, 0.97,
-        f"n = {total_profiles} profiles\n1 domain × users per domain",
+        f"n = {total_profiles} profiles\n5 users / domain",
         transform=ax.transAxes,
         ha="right", va="top",
         fontsize=8.5,
