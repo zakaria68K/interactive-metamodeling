@@ -1,6 +1,7 @@
-Doctor Hugo Reyes issued a Prescription for amoxicillin 500mg to Patient Sofia Ortiz following an Appointment on 2025-05-03 in the General Medicine Department.
-The Prescription references Diagnosis "acute sinusitis" in Sofia's MedicalRecord and specifies a 7-day Treatment course.
-Nurse Angela Brown documented the Prescription in the MedicalRecord and assigned Room 102 for a follow-up check.
-A second Appointment is booked for 2025-05-10 to review Sofia's response to the Treatment.
-The General Medicine Department tracks all Prescriptions to avoid drug interactions across Patients.
-Doctor Reyes coordinates with other Doctors in the Department to ensure no conflicting Prescriptions are issued per MedicalRecord.
+Prescribing Note – Dr. Hugo Reyes, General Medicine, 3 May 2025
+
+Dr. Reyes prescribed amoxicillin 500 mg to Sofia Ortiz following her visit on 3 May. The medication references her documented condition of acute sinusitis and covers a 7-day course of antibiotics.
+
+Angela Brown, the nurse on duty, entered the prescription into Sofia's file and booked room 102 for a follow-up check. A second visit is scheduled for 10 May to review her response to the antibiotics.
+
+The general medicine unit tracks all prescriptions to catch potential drug interactions across patients. Reyes coordinates with colleagues to avoid conflicting medications being issued from the same patient file.

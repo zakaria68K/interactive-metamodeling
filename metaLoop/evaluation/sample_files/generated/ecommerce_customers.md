@@ -1,6 +1,7 @@
-Customer James Park registered with Address at 5 Pine Lane, Paris. He has placed 7 Orders over the past year.
-His active Cart contains 3 items: a coffee maker (Product, Category "Kitchen"), a travel mug, and a grinder.
-Latest Order #ORD-2025-388 included 2 OrderItems for the travel mug and a book. Payment #PAY-388: €52.00, confirmed.
-Shipment #SHP-388 was sent to James's Address on 2025-04-22 and delivered on 2025-04-24.
-Inventory for the travel mug dropped from 30 to 29 after the Order. The book came from Category "Books", stock: 100 → 99.
-James's Cart is preserved between sessions; the coffee maker has been in his Cart for 3 days.
+Customer Account Summary – James Park
+
+James Park registered with a delivery address at 5 Pine Lane, Paris. He has made 7 purchases over the past year. His current basket holds three items: a coffee maker (Kitchen section), a travel mug, and a grinder.
+
+His most recent purchase (#ORD-2025-388) included two items — a travel mug and a book — for €52.00. Payment cleared the same day. The package was sent to his Paris address on 22 April and arrived on the 24th.
+
+After the purchase, travel mug stock dropped from 30 to 29 and book stock (Books section) from 100 to 99. The coffee maker has been sitting in James's basket for three days.

@@ -10,7 +10,6 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 from pypdf import PdfReader
 from metaLoop.baselineApproaches.direct_generation import generate_direct
-from metaLoop.elicitation import decompose_concepts, gather_intent
 from metaLoop.evaluation.llm_extractor import ConceptExtractor
 from metaLoop.evaluation.user_simulator import ProfileUserLLM, SimulatedUserProfile
 from metaLoop.evaluation.datasets import DOMAIN_CONFIGS
@@ -62,14 +61,11 @@ def read_sample_file(file_path: str | None) -> str:
 
 def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
     user_llm = ProfileUserLLM(profile)
-    result = agent.run_iterative(
+    # Use only the concept extraction pipeline (with file-based detection), skip metamodel/JjScript generation
+    result = agent.run_concepts_only(
         profile.prompt,
-        human_validator=lambda _: True,
         user_responder=user_llm.respond,
-        initial_state={
-            "attached_file_content": read_sample_file(profile.sample_file_path),
-            "skip_isolated_validation": True,
-        },
+        initial_state={"attached_file_content": read_sample_file(profile.sample_file_path)},
     )
     final_concepts = normalize(result.get("concepts", []))
     precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), final_concepts)
@@ -84,6 +80,7 @@ def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> 
 
 
 def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> MethodResult:
+    # Generate full JjScript metamodel then extract concepts from it
     file_content = read_sample_file(profile.sample_file_path)
     metamodel_text = generate_direct(profile.prompt, file_content)
     extracted = extractor.extract(profile.prompt, metamodel_text)

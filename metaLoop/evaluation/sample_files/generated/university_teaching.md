@@ -1,6 +1,7 @@
-Professor Maria Santos (Department: Mathematics) teaches MATH301 Linear Algebra and MATH102 Calculus I.
-MATH301 is scheduled in Classroom A101 for Spring 2025 Semester, with 35 Students enrolled.
-Student Bob Kim is enrolled in MATH301 via an Enrollment record and submitted Assignment M1.
-Professor Santos graded Assignment M1 with Grade A- and logged it against Bob's Enrollment.
-The Mathematics Department also runs MATH401 Advanced Analysis, assigned to Professor Chen in Classroom C305.
-All Course offerings are tracked per Semester to ensure Classroom availability and Professor workload balance.
+Faculty Teaching Log – Maria Santos, Mathematics Department
+
+Maria Santos teaches two classes this spring: Linear Algebra (MATH301) and Calculus I (MATH102). MATH301 meets in room A101 with 35 students registered for the term.
+
+Bob Kim is one of those 35 students. He submitted the first piece of assessed work (M1) and received an A- from Santos, recorded against his spring registration for MATH301.
+
+The mathematics faculty also runs Advanced Analysis (MATH401) this term, led by Chen in room C305. Teaching assignments are tracked per term to ensure rooms are not double-booked and faculty workloads stay balanced.

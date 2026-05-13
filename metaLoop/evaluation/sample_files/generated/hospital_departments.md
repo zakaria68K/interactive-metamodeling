@@ -1,6 +1,7 @@
-The Neurology Department has 6 Doctors, 10 Nurses, and 18 Rooms on floor 5 of General Hospital.
-Doctor Lena Fischer scheduled 4 Appointments for 2025-05-12, including Patient David Kim with a suspected Diagnosis of migraine disorder.
-Nurse Priya Kapoor prepared Room 512 and entered preliminary observations into David's MedicalRecord.
-Doctor Fischer confirmed the Diagnosis, prescribed sumatriptan (Prescription), and recommended physiotherapy as Treatment.
-The Department handles Appointments for both inpatient and outpatient Patients.
-Coordination between Doctors and Nurses ensures each Room is ready before each Appointment and MedicalRecords are updated promptly.
+Neurology Unit – Scheduling Notes (12 May 2025)
+
+The neurology unit on floor 5 has 6 doctors, 10 nurses, and 18 consulting rooms. Dr. Lena Fischer had four patients booked for the 12th, including David Kim, who presented with suspected migraine disorder.
+
+Priya Kapoor, the nurse preparing room 512, took David's preliminary observations and entered them into his file before the consultation. Fischer confirmed the migraine condition, prescribed sumatriptan, and recommended a course of physiotherapy.
+
+The unit handles both inpatient and outpatient visits. Staff coordinate to ensure rooms are ready and patient files are updated promptly after each consultation.

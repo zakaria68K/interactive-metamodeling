@@ -1,6 +1,7 @@
-Patient Maria Gomez (DOB: 1985-06-12) has an Appointment on 2025-05-10 at 10:00 with Doctor Chen in the Cardiology Department.
-Doctor Chen reviewed Maria's MedicalRecord and updated her Diagnosis to "hypertension stage 1".
-He issued a Prescription for lisinopril 10mg daily and ordered a Treatment plan with monthly check-ups.
-Nurse Julia Santos prepared Room 204 for the appointment and documented the initial vitals in the MedicalRecord.
-The Cardiology Department has 8 Doctors and 12 Nurses managing appointments across 20 Rooms.
-Maria's follow-up Appointment is scheduled for 2025-06-10, linked to the same Diagnosis and Prescription.
+Clinical Visit – Cardiology, 10 May 2025
+
+Maria Gomez (DOB 12 June 1985) was seen by Dr. Chen in the cardiology unit at 10:00. Chen reviewed her file and updated her condition to hypertension stage 1. He wrote a prescription for lisinopril 10 mg daily and set up a plan for monthly follow-up check-ups.
+
+Julia Santos, the nurse on duty, prepared room 204 beforehand and recorded Maria's initial vitals in her file.
+
+The cardiology unit has 8 doctors and 12 nurses managing visits across 20 consulting rooms. Maria's next scheduled visit is 10 June, linked to the same condition and medication.

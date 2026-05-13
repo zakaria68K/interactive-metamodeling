@@ -1,7 +1,7 @@
-City Central Library's catalog lists "The Pragmatic Programmer" under Category "Software Engineering", authored by Andrew Hunt and David Thomas.
-The Library holds 3 physical Copies (IDs: CP101, CP102, CP103). CP101 is currently on Loan; CP102 and CP103 are available.
-Member James Ford placed a Reservation on CP103 via the online system on 2025-04-10.
-Librarian Anna Cruz manages the catalog and recently added 2 new Books in the "Artificial Intelligence" Category.
-Author Andrej Karpathy's book on Neural Networks was added with 2 Copies. No active Loans yet.
-Librarian Anna Cruz also processed an overdue Fine of €3.00 for Member James Ford, whose previous Loan was returned late.
-The Library uses unique call numbers per Copy so Librarians can track location on shelves.
+Catalog Entry – City Central Library
+
+"The Pragmatic Programmer" by Andrew Hunt and David Thomas is listed under the Software Engineering section. The library holds three physical copies: IDs CP101, CP102, and CP103. CP101 is currently checked out; the other two are on the shelf.
+
+James Ford placed a hold on CP103 via the online portal on 10 April. Anna Cruz, a staff member, manages the catalog and recently added two new titles to the Artificial Intelligence section, including a book on neural networks by Andrej Karpathy (2 copies, no active loans yet).
+
+Each copy carries a unique call number so staff can locate it quickly. Anna also processed an overdue charge of €3.00 against James Ford's account for a previous late return.

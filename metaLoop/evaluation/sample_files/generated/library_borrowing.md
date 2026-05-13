@@ -1,6 +1,7 @@
-Member Sarah O'Brien borrowed Copy #3 of "Clean Code" (Book, Author: Robert Martin) from City Central Library on 2025-03-01.
-The Loan record shows a due date of 2025-03-15. Sarah returned it on 2025-03-20, incurring a Fine of €2.50.
-Librarian David Walsh processed the return and recorded the Fine against Sarah's membership.
-The Book belongs to Category "Software Engineering". The Library holds 5 Copies total.
-Sarah also has an active Reservation on "Design Patterns" placed on 2025-03-18, pending Copy availability.
-Her membership account shows 3 completed Loans and one unpaid Fine of €2.50.
+Lending Record – City Central Library, March 2025
+
+Sarah O'Brien picked up physical copy #3 of "Clean Code" by Robert Martin on 1 March. The lending record shows a due date of 15 March. She returned it on the 20th — five days late — and was charged €2.50, which still shows as unpaid on her account.
+
+David Walsh, a staff member at the front desk, processed the return and logged the overdue charge. The book sits in the Software Engineering section; the library holds five physical copies of this title in total.
+
+Sarah also placed a hold on "Design Patterns" on 18 March, currently in a waiting queue pending copy availability.

@@ -1,6 +1,7 @@
-Product "Sony WH-1000XM5" belongs to Category "Electronics" in the store catalog. Current Inventory: 25 units.
-Customer Leila Hassan added it to her Cart on 2025-05-06 along with a charging cable (also Category "Electronics", 60 in Inventory).
-She proceeded to checkout: Order #ORD-2025-701 was created with 2 OrderItems. Payment #PAY-701: €389.00 via VISA.
-Shipment #SHP-701 was dispatched to Leila's Address (9 Cedar Blvd, Lyon) on 2025-05-07.
-Inventory updated: headphones 25→24, cable 60→59. Cart cleared after Order confirmation.
-The Category "Electronics" page lists 148 Products; Inventory thresholds trigger restocking alerts when stock drops below 5.
+Product Page Note – Sony WH-1000XM5
+
+The Sony WH-1000XM5 headphones are listed under the Electronics section with 25 units in stock. Leila Hassan added them to her basket on 6 May alongside a charging cable (also Electronics, 60 units in stock). She checked out both items the same day.
+
+Purchase #ORD-2025-701 was created for €389.00 charged to Leila's VISA card. The package was dispatched to 9 Cedar Blvd, Lyon on 7 May. Headphone stock dropped to 24 and cable stock to 59. Leila's basket was cleared.
+
+The Electronics section lists 148 products in total. Stock levels trigger a restocking alert when they fall below 5 units.

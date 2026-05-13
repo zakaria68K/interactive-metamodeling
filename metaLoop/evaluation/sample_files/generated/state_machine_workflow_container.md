@@ -1,6 +1,7 @@
-The OrderProcessing StateMachine contains two Regions: FulfillmentRegion and PaymentRegion, running concurrently.
-FulfillmentRegion has States: AwaitingStock, Packing, Shipped. PaymentRegion has States: PaymentPending, PaymentConfirmed.
-InitialState is OrderReceived; FinalState is OrderCompleted.
-StockAvailable Event triggers AwaitingStock→Packing Transition via a Trigger named StockTrigger. Guard: warehouseCapacity > 0.
-PaymentSuccess Event triggers PaymentPending→PaymentConfirmed Transition; Action: sendReceiptEmail() fires.
-The StateMachine coordinates both Regions so OrderCompleted is only reached when both reach their end States.
+Order Processing System – Architecture Notes
+
+When an order arrives, two independent workflows start at the same time: one tracks physical fulfilment and the other tracks payment. They progress in parallel and do not wait for each other.
+
+The fulfilment side starts in a "waiting for stock" phase. Once the warehouse confirms availability — only if remaining capacity is above zero — packing begins, and after packing the parcel moves to a shipped phase. The payment side starts as pending and flips to confirmed once the payment provider responds successfully; at that point a receipt email fires automatically.
+
+The order is only marked complete when both sides have each reached their end phase. Neither can close the order alone. The whole process kicks off when the order is created and finishes when both sides are done.

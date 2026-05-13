@@ -4,7 +4,7 @@ from typing import Callable
 from langgraph.graph import END, START, StateGraph
 
 from .elicitation import decompose_concepts, gather_intent, knowledge_elicitation
-from .generation import advance, dual_validation, generate_chunk, human_validate, isolated_validation_step, router
+from .generation import advance, analyze_file_content, dual_validation, generate_chunk, human_validate, isolated_validation_step, router, select_file_new_concepts
 from .llm_client import LLMClient
 from .state import State
 
@@ -89,11 +89,20 @@ class MetamodelingAgent:
         self,
         user_prompt: str,
         user_responder: Callable[[str, dict], str] | None = None,
+        initial_state: dict | None = None,
     ) -> dict:
         self._set_callbacks(None, user_responder)
         lc, ur = self.llm_client, self._user_responder
-        state: State = {"user_prompt": user_prompt}
+        state: State = {"user_prompt": user_prompt, **(initial_state or {})}
         state.update(gather_intent(state))
         state.update(knowledge_elicitation(state, lc.invoke_json, ur))
         state.update(decompose_concepts(state, lc.invoke_json))
+        # File-based new concept detection (without generating JjScript)
+        if state.get("attached_file_content"):
+            file_analysis = analyze_file_content(state, lc.invoke_json)
+            new_concepts = select_file_new_concepts(state, ur, file_analysis)
+            if new_concepts:
+                existing = list(state.get("concepts", []))
+                merged = existing + [c for c in new_concepts if c not in existing]
+                state = {**state, "concepts": merged}
         return state

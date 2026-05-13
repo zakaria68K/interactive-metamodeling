@@ -1,6 +1,7 @@
-The Physics Department has 12 Professors and offers 20 Courses across 4 Semesters per year.
-Professor Elena Romero teaches PHY201 Mechanics and PHY302 Thermodynamics in Classrooms F201 and F105.
-Student Carlos Ruiz is enrolled in PHY201 for Fall 2025 via an Enrollment record.
-Carlos submitted Assignment PHY-HW1 and received Grade C+ recorded by Professor Romero.
-PHY201 runs in Classroom F201 (capacity 50) with 42 Students currently enrolled this Semester.
-The Department coordinates Course offerings to ensure no Classroom double-booking across Semesters.
+Physics Faculty – Term Overview (Fall 2025)
+
+The physics faculty has 12 lecturers and offers 20 classes spread across four terms a year. Elena Romero teaches two of them: Mechanics (PHY201) and Thermodynamics (PHY302), held in rooms F201 and F105 respectively.
+
+Carlos Ruiz is signed up for PHY201 this autumn. He submitted his first piece of homework (PHY-HW1) and received a C+ from Romero. PHY201 runs in room F201 (50 seats), currently with 42 students registered.
+
+The faculty tracks all class offerings per term to prevent any room being assigned to two classes simultaneously, and to keep lecturer schedules conflict-free.

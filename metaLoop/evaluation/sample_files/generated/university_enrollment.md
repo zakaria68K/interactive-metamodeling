@@ -1,6 +1,7 @@
-Alice Chen (Student, ID 20210045) enrolled in the BSc Computer Science Program offered by the Computer Science Department.
-She registered for CS301 Algorithms (Course) and MATH201 Calculus (Course) in Fall 2025 Semester via two Enrollment records.
-Professor James Liu teaches CS301; he belongs to the Computer Science Department.
-Classroom B204 (capacity 60) is assigned to CS301 for the Fall 2025 Semester.
-Alice submitted Assignment A1 for CS301 and received Grade B+ recorded by Professor Liu.
-The BSc Program requires 120 credits; Alice's Enrollment marks 6 credits completed so far.
+Fall 2025 Registration Summary – Alice Chen (ID 20210045)
+
+Alice is pursuing a BSc in Computer Science, offered by the CS faculty. This term she signed up for two classes: Algorithms (CS301) and Calculus (MATH201). Each sign-up is tied to the current term and tracks progress toward the 120-credit degree.
+
+CS301 meets in room B204 (60 seats). James Liu, a faculty member in the CS department, leads the class. Alice turned in her first piece of assessed work for CS301 and received a B+ from Liu.
+
+Running total: 6 of 120 credits completed. Both registrations are in good standing.

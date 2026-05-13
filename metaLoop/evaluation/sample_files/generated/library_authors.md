@@ -1,6 +1,7 @@
-Author Gabriel García Márquez has 3 Books catalogued in the Library: "100 Years of Solitude", "Love in the Time of Cholera", and "Chronicle of a Death Foretold".
-Each Book is under Category "Latin American Literature". The Library holds 2 Copies of each.
-Member Isabelle Laurent borrowed Copy #1 of "100 Years of Solitude" on 2025-02-14; Loan is still active with no Fine yet.
-Librarian Pedro Alves noted a Reservation by Member Carlos Vega for "Love in the Time of Cholera" since 2025-03-01.
-The Library building (City Central) tracks all 3 Books from this Author in the same shelf section.
-A new Copy of "Chronicle of a Death Foretold" was donated and processed by Librarian Pedro Alves on 2025-04-05.
+Collection Spotlight – Gabriel García Márquez
+
+The library holds three titles by Gabriel García Márquez: "100 Years of Solitude", "Love in the Time of Cholera", and "Chronicle of a Death Foretold". All three sit in the Latin American Literature section, with two physical copies of each.
+
+Isabelle Laurent checked out copy #1 of "100 Years of Solitude" on 14 February; the lending is still active with no overdue charge so far. Pedro Alves, a staff member, noted that Carlos Vega placed a hold on "Love in the Time of Cholera" on 1 March.
+
+A donated copy of "Chronicle of a Death Foretold" arrived on 5 April and was processed by Pedro into the collection.

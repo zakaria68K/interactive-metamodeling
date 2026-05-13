@@ -1,6 +1,7 @@
-The SmartHeater StateMachine has States: Off, Heating, Cooling, Standby grouped in a Region named TemperatureControl.
-InitialState is Standby; FinalState is PoweredDown.
-A TemperatureHigh Event activates a Trigger named OverheatTrigger, firing the Heating→Cooling Transition.
-Guard on that Transition: currentTemp > 30. Action: activateFan() runs when the Transition fires.
-A ScheduledEvent Trigger named NightTimer fires the Heating→Standby Transition each night at 22:00.
-The whole system is coordinated by a StateMachine named HeaterController that responds to all Triggers.
+SmartHeater Controller – Behaviour Notes
+
+When powered on, the heater enters a standby mode. It begins heating the room until the sensor reads above 30 °C, at which point the fan activates automatically and the system switches to a cooling mode. The fan kick-off is exactly what happens when that temperature threshold is crossed.
+
+Every night at 22:00 a scheduled signal fires and returns the heater to standby, regardless of what mode it is currently in. The heating, cooling, and standby modes all belong to the main temperature-management group that this controller oversees.
+
+When the user taps "power off" in the app, the system enters a permanently off mode. After that, no sensor readings or scheduled signals are acted on until the device is manually restarted.

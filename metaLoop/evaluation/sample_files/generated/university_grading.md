@@ -1,6 +1,7 @@
-Professor Sandra Lee graded 30 Assignments for Course CS201 Data Structures in Spring 2025 Semester.
-Student Omar Hassan submitted Assignment DS-A2 and received Grade A, improving his Program standing.
-Assignment DS-A2 was worth 20% of the final CS201 Grade and was due in week 6 of the Semester.
-The Computer Science Department requires a minimum Grade of C in all core Courses to continue in the Program.
-Classroom B101 hosted the CS201 midterm exam where Assignments were distributed to 45 Students.
-Professor Lee's Grade records are aggregated per Student Enrollment to compute final Course Grades.
+Marking Summary – CS201 Data Structures, Spring 2025
+
+Sandra Lee marked 30 pieces of submitted work for her data structures class this spring. Omar Hassan submitted the second assessed piece (DS-A2) and received an A, improving his standing in the BSc programme.
+
+DS-A2 counted for 20% of the final mark and was due in week 6. The CS faculty requires at least a C in all core classes for students to continue in the degree. Room B101 hosted the midterm session where 45 students collected their assessed work.
+
+Lee's marks are aggregated per student registration to compute the final class mark at the end of term.

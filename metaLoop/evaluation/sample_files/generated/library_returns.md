@@ -1,6 +1,7 @@
-Member Tom Hargreaves returned Copy #7 of "Dune" to City Library on 2025-05-01, 5 days late. Librarian Karen Moss levied a Fine of €5.00.
-The original Loan started on 2025-04-10 with a due date of 2025-04-25. Fine remains unpaid.
-Karen updated the Loan status to "returned" and made Copy #7 available for new Loans or Reservations.
-Member Anna Bell had a Reservation on "Dune" that was fulfilled once Copy #7 became available.
-The Book "Dune" by Author Frank Herbert falls under Category "Science Fiction" and the Library holds 8 Copies.
-Librarian Karen Moss flagged Tom's account for exceeding the Fine threshold, temporarily suspending new Loans.
+Return Processing Notes – City Library, May 2025
+
+Tom Hargreaves returned copy #7 of "Dune" on 1 May, five days after the 25 April due date. The original lending started on 10 April. Karen Moss, a staff member, levied a €5.00 overdue charge, which Tom has not yet paid.
+
+Karen marked the lending as returned and put copy #7 back into circulation. Anna Bell had a hold on "Dune" that was fulfilled once the copy was back on the shelf.
+
+"Dune" is by Frank Herbert and sits in the Science Fiction section; the library owns eight physical copies. Karen flagged Tom's account for exceeding the overdue-charge threshold, temporarily blocking him from new checkouts.

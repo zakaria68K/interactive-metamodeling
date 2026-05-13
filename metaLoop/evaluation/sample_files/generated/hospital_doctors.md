@@ -1,6 +1,7 @@
-Doctor Aisha Patel is a cardiologist in the Cardiology Department with 15 years of experience.
-She had 6 Appointments on 2025-05-08: three follow-ups and three new Patients including Patient Robert Nguyen.
-Robert's Diagnosis was "atrial fibrillation". Doctor Patel wrote a Prescription for warfarin and arranged a Treatment in Room 305.
-Nurse Mark Ellis assisted in Room 305, updating Patient Robert's MedicalRecord with vital signs and medication notes.
-The Cardiology Department operates from floor 3 with 15 Rooms. Doctor Patel coordinates with 4 other Doctors.
-Robert's MedicalRecord now links the Appointment, Diagnosis, Prescription, and Treatment for continuity of care.
+Clinical Day Summary – Dr. Aisha Patel, Cardiology
+
+Dr. Patel saw six patients on 8 May: three follow-ups and three new cases, including Robert Nguyen. Robert's condition was identified as atrial fibrillation. Patel wrote a prescription for warfarin and arranged a procedure in room 305.
+
+Mark Ellis, the nurse assigned to room 305, recorded Robert's vitals and medication notes in his file.
+
+The cardiology unit occupies floor 3 with 15 consulting rooms. Patel works alongside four other doctors in the unit. Robert's file now links the visit, the identified condition, the medication, and the procedure for continuity of care.

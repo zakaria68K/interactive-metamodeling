@@ -1,6 +1,7 @@
-Order #ORD-2025-509 for Customer Ben Torres was dispatched via DHL. Shipment #SHP-509 was created on 2025-05-02.
-The shipping Address is 7 Oak Avenue, Berlin. Estimated delivery: 2025-05-05.
-The Order contains 3 OrderItems: running shoes (Product, Category "Sports"), socks ×2, and a water bottle.
-Inventory levels: running shoes had 8 units (now 7), socks had 50 (now 48), water bottle had 22 (now 21).
-Payment #PAY-509 of €134.00 was confirmed before Shipment creation. Customer Ben has 4 past Orders.
-A Cart with 2 items was active for Ben at the time; those items were preserved and not part of this Order.
+Dispatch Note – #ORD-2025-509 (2 May 2025)
+
+Ben Torres's purchase was sent out via DHL. The delivery record was created on 2 May, with the destination set to 7 Oak Avenue, Berlin. Estimated arrival: 5 May.
+
+The purchase contained three items: a pair of running shoes (Sports section, stock now 7), two pairs of socks (stock now 48), and a water bottle (stock now 21).
+
+Ben's card was charged €134.00 before the package was handed to the courier. He has four previous purchases on record. His basket had 2 items in it at the time, which were kept and are not part of this purchase.
