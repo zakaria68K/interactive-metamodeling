@@ -5,7 +5,7 @@ from .state import State
 # Depending on the LLM used, the JSON can be malformed, which may cause the proposed concepts section to be skipped.
 
 
-MAX_INITIAL_CONCEPTS = 5
+MAX_INITIAL_CONCEPTS = 10
 
 
 def _normalize_yes_no(answer: str) -> str:

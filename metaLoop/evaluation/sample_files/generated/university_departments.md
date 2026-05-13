@@ -1,4 +1,6 @@
-Department: Electrical Engineering, 12 Professors, 3 Classrooms on floor 2.
-Professor Dr. Fatima Al-Saad teaches Course EE302 Circuits in Spring 2026 Semester.
-Classroom A110: 60-seat lab, used for EE302 twice a week.
-Spring 2026 Semester runs from February 2 to June 15.
+The Physics Department has 12 Professors and offers 20 Courses across 4 Semesters per year.
+Professor Elena Romero teaches PHY201 Mechanics and PHY302 Thermodynamics in Classrooms F201 and F105.
+Student Carlos Ruiz is enrolled in PHY201 for Fall 2025 via an Enrollment record.
+Carlos submitted Assignment PHY-HW1 and received Grade C+ recorded by Professor Romero.
+PHY201 runs in Classroom F201 (capacity 50) with 42 Students currently enrolled this Semester.
+The Department coordinates Course offerings to ensure no Classroom double-booking across Semesters.
