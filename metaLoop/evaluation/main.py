@@ -101,7 +101,8 @@ def run_no_elicitation(agent: MetamodelingAgent, profile: SimulatedUserProfile) 
 
 
 def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> MethodResult:
-    metamodel_text = generate_direct(profile.prompt)
+    file_content = read_sample_file(profile.sample_file_path)
+    metamodel_text = generate_direct(profile.prompt, file_content)
     extracted = extractor.extract(profile.prompt, metamodel_text)
     predicted = normalize(extracted.get("concepts", []))
     precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), predicted)
