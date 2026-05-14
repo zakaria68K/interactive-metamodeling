@@ -103,8 +103,6 @@ class ProfileUserLLM:
 
         if stage == "familiarity":
             answer = "no"
-        elif stage == "agreement":
-            answer = "yes" if target.issubset(proposed) else "no"
         elif context.get("validation_stage") == "file_new_concepts_selection":
             suggested = {
                 str(concept).strip().lower()
