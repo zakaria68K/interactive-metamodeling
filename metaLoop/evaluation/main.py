@@ -10,6 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 from pypdf import PdfReader
 from metaLoop.baselineApproaches.direct_generation import generate_direct
+from metaLoop.baselineApproaches.generate_then_validate import refine_metamodel
 from metaLoop.evaluation.llm_extractor import ConceptExtractor
 from metaLoop.evaluation.user_simulator import ProfileUserLLM, SimulatedUserProfile
 from metaLoop.evaluation.datasets import DOMAIN_CONFIGS
@@ -97,6 +98,45 @@ def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> 
     )
 
 
+def run_generate_then_validate(
+    extractor: ConceptExtractor,
+    profile: SimulatedUserProfile,
+    max_iterations: int = 3,
+) -> MethodResult:
+    """Generate a full metamodel first, then iteratively validate and refine it with the user."""
+    user_llm = ProfileUserLLM(profile)
+    file_content = read_sample_file(profile.sample_file_path)
+
+    # Step 1: initial one-shot generation
+    metamodel_text = generate_direct(profile.prompt, file_content)
+    transcript: list[dict[str, str]] = [
+        {"stage": "initial_generation", "question": profile.prompt, "answer": metamodel_text}
+    ]
+
+    # Step 2: iterative user validation + LLM refinement
+    _approval_signals = {"yes", "correct", "good", "looks good", "that's right", "perfect", "approve"}
+    for i in range(max_iterations):
+        current_concepts = extractor.extract(profile.prompt, metamodel_text).get("concepts", [])
+        validation_q = (
+            f"I generated a metamodel for your domain. "
+            f"It currently includes these concepts: {', '.join(current_concepts)}. "
+            f"Is this complete and correct for your needs? If not, what should be changed?"
+        )
+        user_response = user_llm.respond(validation_q, {"stage": f"validation_{i + 1}", "concepts": current_concepts})
+        transcript.append({"stage": f"validation_{i + 1}", "question": validation_q, "answer": user_response})
+
+        if any(sig in user_response.lower() for sig in _approval_signals):
+            break
+
+        metamodel_text = refine_metamodel(profile.prompt, metamodel_text, user_response)
+        transcript.append({"stage": f"refinement_{i + 1}", "question": "refinement", "answer": metamodel_text})
+
+    final_extracted = extractor.extract(profile.prompt, metamodel_text)
+    predicted = normalize(final_extracted.get("concepts", []))
+    precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), predicted)
+    return MethodResult("generate_then_validate", predicted, precision, recall, f1, transcript)
+
+
 def write_report(rows: list[dict]) -> Path:
     out_dir = ROOT / "metaLoop" / "evaluation" / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -131,10 +171,13 @@ def main() -> None:
     agent = MetamodelingAgent()
     extractor = ConceptExtractor()
 
-    methods: List[tuple[str, Callable[[SimulatedUserProfile], MethodResult]]] = [
+    all_methods: List[tuple[str, Callable[[SimulatedUserProfile], MethodResult]]] = [
         ("interactive", lambda profile: run_interactive(agent, profile)),
         ("one_shot", lambda profile: run_one_shot(extractor, profile)),
+        ("generate_then_validate", lambda profile: run_generate_then_validate(extractor, profile)),
     ]
+    _method_filter = {m.strip() for m in os.getenv("EVAL_METHODS", "").split(",") if m.strip()}
+    methods = [(n, f) for n, f in all_methods if not _method_filter or n in _method_filter]
 
     per_method_metrics: dict[str, List[float]] = {name: [] for name, _ in methods}
     report_rows: list[dict] = []
