@@ -103,9 +103,19 @@ def run_generate_then_validate(
     profile: SimulatedUserProfile,
     max_iterations: int = 3,
 ) -> MethodResult:
-    """Generate a full metamodel first, then iteratively validate and refine it with the user."""
+    """Generate a full metamodel first, then validate and refine with the user.
+
+    Interaction mirrors the interactive approach:
+    - Per-concept yes/no confirmation (same as elicitation confirmation step).
+    - A neutral feedback question after each pass (same style as the background
+      question in knowledge_elicitation) where the user may mention concepts
+      organically but is not asked to enumerate what is missing.
+    """
     user_llm = ProfileUserLLM(profile)
     file_content = read_sample_file(profile.sample_file_path)
+
+    def _is_yes(answer: str) -> bool:
+        return answer.strip().lower().rstrip(".?!") in {"yes", "y"}
 
     # Step 1: initial one-shot generation
     metamodel_text = generate_direct(profile.prompt, file_content)
@@ -113,26 +123,32 @@ def run_generate_then_validate(
         {"stage": "initial_generation", "question": profile.prompt, "answer": metamodel_text}
     ]
 
-    # Step 2: iterative user validation + LLM refinement
-    _approval_signals = {"yes", "correct", "good", "looks good", "that's right", "perfect", "approve"}
-    for i in range(max_iterations):
-        current_concepts = extractor.extract(profile.prompt, metamodel_text).get("concepts", [])
-        validation_q = (
-            f"I generated a metamodel for your domain. "
-            f"It currently includes these concepts: {', '.join(current_concepts)}. "
-            f"Is this complete and correct for your needs? If not, what should be changed?"
-        )
-        user_response = user_llm.respond(validation_q, {"stage": f"validation_{i + 1}", "concepts": current_concepts})
-        transcript.append({"stage": f"validation_{i + 1}", "question": validation_q, "answer": user_response})
+    approved: list[str] = []
 
-        if any(sig in user_response.lower() for sig in _approval_signals):
-            break
+    def _confirm_concepts(candidates: list[str]) -> None:
+        for concept in candidates:
+            if concept in approved:
+                continue
+            q = f"Is '{concept}' a relevant concept in your domain? Answer yes or no only."
+            answer = user_llm.respond(q, {"stage": "concept_confirmation", "concept": concept})
+            transcript.append({"stage": "concept_confirmation", "question": q, "answer": answer})
+            if _is_yes(answer):
+                approved.append(concept)
 
-        metamodel_text = refine_metamodel(profile.prompt, metamodel_text, user_response)
-        transcript.append({"stage": f"refinement_{i + 1}", "question": "refinement", "answer": metamodel_text})
+    # Step 2: confirm initial candidates one by one
+    _confirm_concepts(extractor.extract(profile.prompt, metamodel_text).get("concepts", []))
 
-    final_extracted = extractor.extract(profile.prompt, metamodel_text)
-    predicted = normalize(final_extracted.get("concepts", []))
+    # Step 3: neutral feedback question + refinement (same style as background question in interactive)
+    feedback_q = "Do you have any feedback about this metamodel or the domain it covers?"
+    for _ in range(max_iterations - 1):
+        feedback = user_llm.respond(feedback_q, {"stage": "feedback", "approved": approved})
+        transcript.append({"stage": "feedback", "question": feedback_q, "answer": feedback})
+        metamodel_text = refine_metamodel(profile.prompt, metamodel_text, feedback)
+        transcript.append({"stage": "refinement", "question": "refinement", "answer": metamodel_text})
+        new_candidates = extractor.extract(profile.prompt, metamodel_text).get("concepts", [])
+        _confirm_concepts(new_candidates)
+
+    predicted = normalize(approved)
     precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), predicted)
     return MethodResult("generate_then_validate", predicted, precision, recall, f1, transcript)
 

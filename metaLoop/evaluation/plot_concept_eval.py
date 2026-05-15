@@ -11,7 +11,7 @@ OUTPUT_PATH = RESULTS_DIR / "concept_eval_summary.png"
 
 REPORT_FILES = [
     RESULTS_DIR / "concept_eval_report.json",
-    RESULTS_DIR / "concept_eval_report_third_baseline.json",
+    RESULTS_DIR / "concept_eval_report_third_baseline_v2.json",
 ]
 
 
