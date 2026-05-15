@@ -6,17 +6,27 @@ import matplotlib.pyplot as plt
 
 
 ROOT = Path(__file__).resolve().parents[2]
-REPORT_PATH = ROOT / "metaLoop" / "evaluation" / "results" / "concept_eval_report.json"
-OUTPUT_DIR = ROOT / "metaLoop" / "evaluation" / "results"
-OUTPUT_PATH = OUTPUT_DIR / "concept_eval_summary.png"
+RESULTS_DIR = ROOT / "metaLoop" / "evaluation" / "results"
+OUTPUT_PATH = RESULTS_DIR / "concept_eval_summary.png"
+
+REPORT_FILES = [
+    RESULTS_DIR / "concept_eval_report.json",
+    RESULTS_DIR / "concept_eval_report_third_baseline.json",
+]
 
 
-def load_summary(report_path: Path) -> dict[str, dict[str, float]]:
-    rows = json.loads(report_path.read_text(encoding="utf-8"))
+def load_rows(report_files: list[Path]) -> list[dict]:
+    rows: list[dict] = []
+    for path in report_files:
+        if path.exists():
+            rows.extend(json.loads(path.read_text(encoding="utf-8")))
+    return rows
+
+
+def load_summary(rows: list[dict]) -> dict[str, dict[str, float]]:
     by_method: dict[str, dict[str, float]] = defaultdict(
         lambda: {"precision_sum": 0.0, "recall_sum": 0.0, "f1_sum": 0.0, "count": 0.0}
     )
-
     for row in rows:
         method = row["method"]
         by_method[method]["precision_sum"] += float(row["precision"])
@@ -36,12 +46,12 @@ def load_summary(report_path: Path) -> dict[str, dict[str, float]]:
 
 
 def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_profiles: int) -> Path:
-    methods = ["interactive", "one_shot"]
-    labels = ["Interactive", "One Shot"]
-    x_positions = [0, 0.35]
-    colors = ["#000000", "#00569D"]
+    methods = ["interactive", "generate_then_validate", "one_shot"]
+    labels = ["Interactive", "Gen + Validate", "One Shot"]
+    x_positions = [0, 0.35, 0.70]
+    colors = ["#000000", "#888888", "#00569D"]
 
-    fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
     fig.suptitle("Concept Evaluation — Average F1 Score", fontsize=14, fontweight="bold")
 
     f1_values = [summary.get(m, {}).get("avg_f1", 0.0) for m in methods]
@@ -55,7 +65,7 @@ def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_
     ax.set_ylabel("F1 Score", fontsize=11)
     ax.set_xticks(x_positions)
     ax.set_xticklabels(labels, fontsize=11)
-    ax.set_xlim(-0.3, 0.65)
+    ax.set_xlim(-0.2, 0.90)
     ax.grid(axis="y", linestyle="--", alpha=0.35)
     ax.set_axisbelow(True)
 
@@ -76,9 +86,10 @@ def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_
 
 
 def main() -> None:
-    rows = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
-    total_profiles = len({r["profile_id"] for r in rows})
-    summary = load_summary(REPORT_PATH)
+    rows = load_rows(REPORT_FILES)
+    total_profiles = len({r["profile_id"] for r in rows if r["method"] == "interactive"} or
+                         {r["profile_id"] for r in rows})
+    summary = load_summary(rows)
     output_path = plot_summary(summary, OUTPUT_PATH, total_profiles)
     print(output_path)
 
