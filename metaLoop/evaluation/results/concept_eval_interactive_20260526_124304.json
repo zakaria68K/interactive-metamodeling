@@ -1,0 +1,1969 @@
+[
+  {
+    "run": 1,
+    "profile_id": "state_machine_user_01_novice",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/state_machine_events.md",
+    "emotion": "anxious",
+    "verbosity": "terse",
+    "strategy": "confirmatory",
+    "competency": "novice",
+    "method": "interactive",
+    "target": [
+      "action",
+      "event",
+      "finalstate",
+      "guard",
+      "initialstate",
+      "region",
+      "state",
+      "statemachine",
+      "transition",
+      "trigger"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "action",
+      "event",
+      "finalstate",
+      "guard",
+      "initialstate",
+      "region",
+      "state",
+      "transition"
+    ],
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.888888888888889,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "state_machine_user_01_novice",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "State",
+          "Event",
+          "Transition",
+          "Trigger",
+          "StateMachine",
+          "Guard",
+          "Action",
+          "Region",
+          "InitialState",
+          "FinalState"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "I think nothing.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "No, I'm not sure about all of them.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 8
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I don't know CompositeState or History.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 6
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I think so, yes.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 4
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Nothing, I think.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I think so.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I'm not sure.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Timer, AuditLog, EmergencySignal, EmergencyOverride. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "state_machine_user_02_intermediate",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/state_machine_events.md",
+    "emotion": "enthusiastic",
+    "verbosity": "moderate",
+    "strategy": "exploratory",
+    "competency": "intermediate",
+    "method": "interactive",
+    "target": [
+      "action",
+      "event",
+      "finalstate",
+      "guard",
+      "initialstate",
+      "region",
+      "state",
+      "statemachine",
+      "transition",
+      "trigger"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "action",
+      "event",
+      "finalstate",
+      "guard",
+      "initialstate",
+      "region",
+      "state",
+      "statemachine",
+      "transition",
+      "trigger"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "state_machine_user_02_intermediate",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "State",
+          "Event",
+          "Transition",
+          "Trigger",
+          "StateMachine",
+          "Guard",
+          "Action",
+          "Region",
+          "InitialState",
+          "FinalState"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I agree with State, Transition, Event, Action, StateMachine, Trigger, and Guard, but I do not recognize Condition, EntryAction, or ExitAction. I am so excited to work on this, but what are those other terms?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 34
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I am so excited about this! I do not recognize Condition, EntryAction, or ExitAction. Should we also include InitialState, FinalState, or Region?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 22
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes! I am so excited to see these terms. How will a StateMachine use these to manage a Transition?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 19
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Everything looks wonderful! You have included State, Event, Transition, Trigger, StateMachine, Guard, Action, Region, InitialState, and FinalState. I am so excited! Will a Transition always need a Trigger?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 28
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes, these are perfect! How do you suggest we use them to build the StateMachine?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 15
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Nothing needs to be changed, this is exactly what I wanted! I am so excited! How will a Transition use a Trigger and an Event?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 25
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "state_machine_user_03_expert",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/state_machine_events.md",
+    "emotion": "calm",
+    "verbosity": "verbose",
+    "strategy": "goal_directed",
+    "competency": "expert",
+    "method": "interactive",
+    "target": [
+      "action",
+      "event",
+      "finalstate",
+      "guard",
+      "initialstate",
+      "region",
+      "state",
+      "statemachine",
+      "transition",
+      "trigger"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "action",
+      "event",
+      "finalstate",
+      "guard",
+      "initialstate",
+      "state",
+      "statemachine",
+      "transition"
+    ],
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.888888888888889,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "state_machine_user_03_expert",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "State",
+          "Event",
+          "Transition",
+          "Trigger",
+          "StateMachine",
+          "Guard",
+          "Action",
+          "Region",
+          "InitialState",
+          "FinalState"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "No. I am not familiar with CompositeState or HistoryState. I do recognize State, Transition, Event, Action, Guard, StateMachine, InitialState, and FinalState. In a StateMachine, an InitialState can lead to a State through a Transition that uses a Trigger from an Event and may include a Guard or an Action.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 49
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I am quite confused by the inclusion of CompositeState and HistoryState in your list, as I have no familiarity with those specific terms. To keep the metamodel focused on the domain I am interested in, you should remove them. The rest of your proposed concepts, such as State, Event, Transition, Action, Guard, StateMachine, InitialState, and FinalState, are all perfectly appropriate.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 60
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Timer, AuditLog, TechnicianRestart. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "university_user_01_novice",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/university_enrollment.md",
+    "emotion": "anxious",
+    "verbosity": "terse",
+    "strategy": "confirmatory",
+    "competency": "novice",
+    "method": "interactive",
+    "target": [
+      "assignment",
+      "classroom",
+      "course",
+      "department",
+      "enrollment",
+      "grade",
+      "professor",
+      "program",
+      "semester",
+      "student"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "assignment",
+      "classroom",
+      "course",
+      "department",
+      "enrollment",
+      "grade",
+      "professor",
+      "student"
+    ],
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.888888888888889,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "university_user_01_novice",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Student",
+          "Enrollment",
+          "Course",
+          "Semester",
+          "Program",
+          "Professor",
+          "Department",
+          "Assignment",
+          "Grade",
+          "Classroom"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "Maybe students and courses.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 4
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I'm not sure about all of them.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 7
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Maybe Professor instead?",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I'm not sure, maybe no.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 5
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I don't know Schedule or Prerequisite.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 6
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I think so.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Maybe Semester and Program?",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 4
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Term, DegreeProgram, CreditRequirement. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "university_user_02_intermediate",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/university_enrollment.md",
+    "emotion": "enthusiastic",
+    "verbosity": "moderate",
+    "strategy": "exploratory",
+    "competency": "intermediate",
+    "method": "interactive",
+    "target": [
+      "assignment",
+      "classroom",
+      "course",
+      "department",
+      "enrollment",
+      "grade",
+      "professor",
+      "program",
+      "semester",
+      "student"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "assignment",
+      "classroom",
+      "course",
+      "department",
+      "enrollment",
+      "grade",
+      "professor",
+      "program",
+      "semester",
+      "student"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "university_user_02_intermediate",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Student",
+          "Enrollment",
+          "Course",
+          "Semester",
+          "Program",
+          "Professor",
+          "Department",
+          "Assignment",
+          "Grade",
+          "Classroom"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I agree with Course, Student, Department, Semester, Enrollment, Assignment, Grade, and Classroom! However, I do not know Instructor or Schedule. What are Instructor and Schedule?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 25
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I am so excited to see this! I do not know what Instructor is, but I use the term Professor. I am also not familiar with Schedule. Should we also include Program?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 32
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes! These are exactly the terms I need. How do you plan to link things like a Student to a Course?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 21
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Everything looks perfect! You have included all the key parts like Student, Course, and Professor. I am really excited to see this! How will a Student be linked to a Course?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 31
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes, all of these are exactly what I was thinking of! I am so excited to start!",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 17
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I think this list is perfect! It really covers everything I was thinking of. How are you planning to connect things like Student and Course within this model?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 28
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "university_user_03_expert",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/university_enrollment.md",
+    "emotion": "calm",
+    "verbosity": "verbose",
+    "strategy": "goal_directed",
+    "competency": "expert",
+    "method": "interactive",
+    "target": [
+      "assignment",
+      "classroom",
+      "course",
+      "department",
+      "enrollment",
+      "grade",
+      "professor",
+      "program",
+      "semester",
+      "student"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "assignment",
+      "classroom",
+      "course",
+      "department",
+      "enrollment",
+      "grade",
+      "professor",
+      "program",
+      "semester",
+      "student"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "university_user_03_expert",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Student",
+          "Enrollment",
+          "Course",
+          "Semester",
+          "Program",
+          "Professor",
+          "Department",
+          "Assignment",
+          "Grade",
+          "Classroom"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "no",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "The proposed list needs some adjustments. I am not familiar with the term University, and I do not recognize the concept of Schedule. You should also replace Instructor with Professor. To ensure the model is complete, you should also include Semester and Program.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 43
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes, I agree with all of these concepts, as they all belong in the metamodel, including the Student, Professor, Course, Department, Program, Semester, Classroom, Enrollment, Assignment, and Grade.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 28
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Nothing needs to be changed because the proposed list of concepts is complete. The inclusion of Student, Enrollment, Course, Semester, Program, Professor, Department, Assignment, Grade, and Classroom provides all the necessary elements for the metamodel. These entities allow for representing how a Professor manages an Assignment and a Grade for a Student within a Course during a Semester, or how a Department relates to a Program and a Classroom.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 69
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Credit. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "library_user_01_novice",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/library_reservations.md",
+    "emotion": "anxious",
+    "verbosity": "terse",
+    "strategy": "confirmatory",
+    "competency": "novice",
+    "method": "interactive",
+    "target": [
+      "author",
+      "book",
+      "category",
+      "copy",
+      "fine",
+      "librarian",
+      "library",
+      "loan",
+      "member",
+      "reservation"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "author",
+      "book",
+      "category",
+      "copy",
+      "librarian",
+      "library",
+      "loan",
+      "member",
+      "reservation",
+      "shelf",
+      "staff"
+    ],
+    "precision": 0.8181818181818182,
+    "recall": 0.9,
+    "f1": 0.8571428571428572,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "library_user_01_novice",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Member",
+          "Loan",
+          "Book",
+          "Copy",
+          "Fine",
+          "Reservation",
+          "Librarian",
+          "Library",
+          "Category",
+          "Author"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "Not much, I think.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 4
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "No.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I'm not sure about some.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 5
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "No, I'm not sure.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 4
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Maybe Librarian?",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 2
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I'm not sure about all of them.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 7
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I'm not sure about Shelf.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 5
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Copy, Queue, OverdueCharge, Confirmation. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "Copy",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "library_user_02_intermediate",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/library_reservations.md",
+    "emotion": "enthusiastic",
+    "verbosity": "moderate",
+    "strategy": "exploratory",
+    "competency": "intermediate",
+    "method": "interactive",
+    "target": [
+      "author",
+      "book",
+      "category",
+      "copy",
+      "fine",
+      "librarian",
+      "library",
+      "loan",
+      "member",
+      "reservation"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "author",
+      "book",
+      "category",
+      "copy",
+      "fine",
+      "librarian",
+      "library",
+      "loan",
+      "member",
+      "reservation"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "library_user_02_intermediate",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Member",
+          "Loan",
+          "Book",
+          "Copy",
+          "Fine",
+          "Reservation",
+          "Librarian",
+          "Library",
+          "Category",
+          "Author"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "No, I do not know what a Publisher is, but I am so excited about Book, Author, Member, Library, Loan, Librarian, Category, Reservation, and Fine! What is a Publisher?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 29
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I am so excited to see this! Most of these look great, like Book, Author, and Member. However, I am not sure what a Publisher is. Also, should we include Copy?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 31
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes! This is wonderful! I am so excited! How will a Member create a Loan?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 15
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I am so happy! I do not think anything needs to be changed. Will a Member have a Fine?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 19
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes! This is a great start! How will a Member use a Reservation for a Book?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 16
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I am so excited that you have included everything! The list looks perfect to me and I do not see anything that needs to be changed. How will you show the relationship between a Book and an Author?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 38
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Hold Request Log, Mobile App, Queue. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "library_user_03_expert",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/library_reservations.md",
+    "emotion": "calm",
+    "verbosity": "verbose",
+    "strategy": "goal_directed",
+    "competency": "expert",
+    "method": "interactive",
+    "target": [
+      "author",
+      "book",
+      "category",
+      "copy",
+      "fine",
+      "librarian",
+      "library",
+      "loan",
+      "member",
+      "reservation"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "author",
+      "book",
+      "category",
+      "copy",
+      "fine",
+      "librarian",
+      "library",
+      "loan",
+      "member",
+      "reservation"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "library_user_03_expert",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Member",
+          "Loan",
+          "Book",
+          "Copy",
+          "Fine",
+          "Reservation",
+          "Librarian",
+          "Library",
+          "Category",
+          "Author"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I agree with Book, Author, Library, Member, Loan, Reservation, and Librarian. I do not agree with Catalog, and I am not familiar with Publisher or Shelf.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 26
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "The concepts Catalog, Publisher, and Shelf are not part of my domain and should be removed from your list. To improve the model, you should also include Copy, because it is important to track the individual units of a Book. You should also add Fine, as this is needed to manage unpaid amounts from a late Loan. Lastly, including Category is necessary for the organization of the Library.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 68
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "hospital_user_01_novice",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/hospital_appointments.md",
+    "emotion": "anxious",
+    "verbosity": "terse",
+    "strategy": "confirmatory",
+    "competency": "novice",
+    "method": "interactive",
+    "target": [
+      "appointment",
+      "department",
+      "diagnosis",
+      "doctor",
+      "medicalrecord",
+      "nurse",
+      "patient",
+      "prescription",
+      "room",
+      "treatment"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "appointment",
+      "department",
+      "doctor",
+      "medicalrecord",
+      "patient",
+      "prescription",
+      "procedure",
+      "receptionist",
+      "room",
+      "specialty"
+    ],
+    "precision": 0.7,
+    "recall": 0.7,
+    "f1": 0.7,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "hospital_user_01_novice",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Patient",
+          "Appointment",
+          "Doctor",
+          "Department",
+          "MedicalRecord",
+          "Diagnosis",
+          "Prescription",
+          "Treatment",
+          "Room",
+          "Nurse"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "I think... patients and doctors.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 5
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I'm not sure about all of them.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 7
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I'm not sure about some.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 5
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I'm not sure about all of them.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 7
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I'm not sure about some.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 5
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I don't think so.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 4
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I'm not sure about Receptionist, Specialty, or Procedure.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 8
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "hospital_user_02_intermediate",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/hospital_appointments.md",
+    "emotion": "enthusiastic",
+    "verbosity": "moderate",
+    "strategy": "exploratory",
+    "competency": "intermediate",
+    "method": "interactive",
+    "target": [
+      "appointment",
+      "department",
+      "diagnosis",
+      "doctor",
+      "medicalrecord",
+      "nurse",
+      "patient",
+      "prescription",
+      "room",
+      "treatment"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "appointment",
+      "department",
+      "diagnosis",
+      "doctor",
+      "medicalrecord",
+      "nurse",
+      "patient",
+      "prescription",
+      "room",
+      "treatment"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "hospital_user_02_intermediate",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Patient",
+          "Appointment",
+          "Doctor",
+          "Department",
+          "MedicalRecord",
+          "Diagnosis",
+          "Prescription",
+          "Treatment",
+          "Room",
+          "Nurse"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "No, I am not sure what Schedule, Payment, or Invoice are, but I am so excited to see Patient, Doctor, Appointment, Department, Room, MedicalRecord, and Prescription! What are Schedule, Payment, and Invoice?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 32
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I am so excited to see this progress! It looks wonderful! I am not sure about Schedule, Payment, or Invoice. Could we also include Nurse and Diagnosis?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 27
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes! These are all perfect! I am so excited! Does a Doctor provide a Treatment?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 15
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "This looks wonderful! I am so excited! I was just wondering, do you think we should include Treatment as well?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 20
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes! This looks absolutely perfect! Are you planning to show how a Doctor relates to an Appointment?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 17
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Everything looks absolutely wonderful! I am so excited! I do not think anything needs to be changed, but how do you plan to link a Doctor to a Patient and an Appointment?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 32
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Vitals. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "hospital_user_03_expert",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/hospital_appointments.md",
+    "emotion": "calm",
+    "verbosity": "verbose",
+    "strategy": "goal_directed",
+    "competency": "expert",
+    "method": "interactive",
+    "target": [
+      "appointment",
+      "department",
+      "diagnosis",
+      "doctor",
+      "medicalrecord",
+      "nurse",
+      "patient",
+      "prescription",
+      "room",
+      "treatment"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "appointment",
+      "department",
+      "diagnosis",
+      "doctor",
+      "medicalrecord",
+      "nurse",
+      "patient",
+      "prescription",
+      "room",
+      "treatment"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "hospital_user_03_expert",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Patient",
+          "Appointment",
+          "Doctor",
+          "Department",
+          "MedicalRecord",
+          "Diagnosis",
+          "Prescription",
+          "Treatment",
+          "Room",
+          "Nurse"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Patient: yes, Doctor: yes, Appointment: yes, Department: yes, Specialization: no, Schedule: no, Room: yes, Nurse: yes, Prescription: yes, MedicalRecord: yes.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 20
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "You should remove Specialization and Schedule from the list as they are not part of my domain. You also need to add Diagnosis and Treatment to the list to ensure the framework is complete alongside the Patient, Doctor, and Appointment.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 40
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes, I agree with these concepts. For the hospital appointment management, a Patient needs an Appointment with a Doctor or Nurse in a Department, which involves a Room and a MedicalRecord with a Diagnosis, Prescription, and Treatment.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 37
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Nothing needs to be changed because the list of concepts provided is already complete and accurate for my requirements. The inclusion of Patient, Doctor, Appointment, Department, Room, Nurse, Prescription, MedicalRecord, Diagnosis, and Treatment covers the entire scope of the hospital appointment management system I am trying to define. These specific elements are the only ones necessary to represent the core functionality and the information that needs to be managed within this context.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 72
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "ecommerce_user_01_novice",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/ecommerce_orders.md",
+    "emotion": "anxious",
+    "verbosity": "terse",
+    "strategy": "confirmatory",
+    "competency": "novice",
+    "method": "interactive",
+    "target": [
+      "address",
+      "cart",
+      "category",
+      "customer",
+      "inventory",
+      "order",
+      "orderitem",
+      "payment",
+      "product",
+      "shipment"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "address",
+      "cart",
+      "customer",
+      "order",
+      "orderitem",
+      "payment",
+      "product"
+    ],
+    "precision": 1.0,
+    "recall": 0.7,
+    "f1": 0.8235294117647058,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "ecommerce_user_01_novice",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Order",
+          "Product",
+          "Customer",
+          "OrderItem",
+          "Payment",
+          "Shipment",
+          "Address",
+          "Inventory",
+          "Category",
+          "Cart"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "no",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      },
+      {
+        "stage": "background",
+        "question": "What do you already know about this domain (or type 'nothing')? ",
+        "answer": "I think maybe nothing.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 4
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I'm not sure about all of them.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 7
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Maybe Invoice, Shipping, or Status?",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 5
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I think so.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "I'm not sure.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I think so.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "Nothing, I think.",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 3
+      },
+      {
+        "stage": "file_new_concepts_selection",
+        "question": "The attached file suggests these new concepts: Stock, Delivery, ProductCategory. Which ones do you want to add? Reply with a comma-separated list or 'none'.",
+        "answer": "none",
+        "emotion": "anxious",
+        "verbosity": "terse",
+        "strategy": "confirmatory",
+        "competency": "novice",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "ecommerce_user_02_intermediate",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/ecommerce_orders.md",
+    "emotion": "enthusiastic",
+    "verbosity": "moderate",
+    "strategy": "exploratory",
+    "competency": "intermediate",
+    "method": "interactive",
+    "target": [
+      "address",
+      "cart",
+      "category",
+      "customer",
+      "inventory",
+      "order",
+      "orderitem",
+      "payment",
+      "product",
+      "shipment"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "address",
+      "cart",
+      "category",
+      "customer",
+      "inventory",
+      "order",
+      "orderitem",
+      "payment",
+      "product",
+      "shipment"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "ecommerce_user_02_intermediate",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Order",
+          "Product",
+          "Customer",
+          "OrderItem",
+          "Payment",
+          "Shipment",
+          "Address",
+          "Inventory",
+          "Category",
+          "Cart"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "I am so excited to start! No, I do not agree with the entire list because I do not know what Invoice, PaymentMethod, or OrderStatus are, but I do agree with Order, Customer, Product, OrderItem, Payment, Shipment, and Address. What are those other terms?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 44
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "This is looking so good! I am really happy to see Order, Product, and Customer in there. I am not sure what Invoice, PaymentMethod, or OrderStatus are, though. Would it be possible to add Inventory or Category as well?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 39
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "Yes! These all look correct and I am so excited to see this! How will you determine how they all link together?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 22
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "This looks like a really wonderful start! I am so excited to see this! I was just wondering, shouldn't we also include a Cart?",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 24
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes",
+        "emotion": "enthusiastic",
+        "verbosity": "moderate",
+        "strategy": "exploratory",
+        "competency": "intermediate",
+        "answer_length": 1
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "profile_id": "ecommerce_user_03_expert",
+    "sample_file_path": "metaLoop/evaluation/sample_files/generated/ecommerce_orders.md",
+    "emotion": "calm",
+    "verbosity": "verbose",
+    "strategy": "goal_directed",
+    "competency": "expert",
+    "method": "interactive",
+    "target": [
+      "address",
+      "cart",
+      "category",
+      "customer",
+      "inventory",
+      "order",
+      "orderitem",
+      "payment",
+      "product",
+      "shipment"
+    ],
+    "target_size": 10,
+    "predicted": [
+      "address",
+      "cart",
+      "category",
+      "customer",
+      "inventory",
+      "order",
+      "orderitem",
+      "payment",
+      "product",
+      "shipment"
+    ],
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "transcript": [
+      {
+        "stage": "__metadata__",
+        "profile_id": "ecommerce_user_03_expert",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "target_concepts_count": 10,
+        "target_concepts": [
+          "Order",
+          "Product",
+          "Customer",
+          "OrderItem",
+          "Payment",
+          "Shipment",
+          "Address",
+          "Inventory",
+          "Category",
+          "Cart"
+        ]
+      },
+      {
+        "stage": "familiarity",
+        "question": "Are you familiar with the domain concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "no",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      },
+      {
+        "stage": "feedback",
+        "question": "What should be changed? ",
+        "answer": "The concepts of Invoice and Supplier should be removed from the list because I do not recognize or use those terms in this domain. Instead, it is necessary to include Inventory and Cart to ensure the metamodel is fully realized and comprehensive. The other components you have proposed, such as Order, Customer, Product, OrderItem, Payment, Shipment, Address, and Category, are all correct and should be kept in the final structure.",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 70
+      },
+      {
+        "stage": "agreement",
+        "question": "Do you agree with these concepts?: ",
+        "answer": "yes",
+        "emotion": "calm",
+        "verbosity": "verbose",
+        "strategy": "goal_directed",
+        "competency": "expert",
+        "answer_length": 1
+      }
+    ]
+  }
+]

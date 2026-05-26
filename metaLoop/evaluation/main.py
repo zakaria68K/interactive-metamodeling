@@ -1,6 +1,7 @@
 import json
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 import sys
 from typing import Callable, List, Set
@@ -153,10 +154,12 @@ def run_generate_then_validate(
     return MethodResult("generate_then_validate", predicted, precision, recall, f1, transcript)
 
 
-def write_report(rows: list[dict]) -> Path:
+def write_report(rows: list[dict], methods: list[str]) -> Path:
     out_dir = ROOT / "metaLoop" / "evaluation" / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
-    report_path = out_dir / "concept_eval_report.json"
+    tag = "_".join(methods)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_path = out_dir / f"concept_eval_{tag}_{timestamp}.json"
     report_path.write_text(json.dumps(rows, indent=2), encoding="utf-8")
     return report_path
 
@@ -164,14 +167,18 @@ def write_report(rows: list[dict]) -> Path:
 def build_profiles() -> list[SimulatedUserProfile]:
     profiles: list[SimulatedUserProfile] = []
     for domain_name, config in DOMAIN_CONFIGS.items():
-        for index, (suffix, target_concepts) in enumerate(config["users"], start=1):
-            sample_path = GENERATED_SAMPLE_DIR / f"{domain_name}_{suffix}.md"
+        for index, user in enumerate(config["users"], start=1):
+            sample_path = GENERATED_SAMPLE_DIR / f"{domain_name}_{user['sample_suffix']}.md"
             profiles.append(
                 SimulatedUserProfile(
-                    profile_id=f"{domain_name}_user_{index:02d}_{suffix}",
+                    profile_id=f"{domain_name}_user_{index:02d}_{user['role']}",
                     prompt=config["prompt"],
-                    target_concepts=target_concepts,
+                    target_concepts=user["target_concepts"],
                     sample_file_path=str(sample_path.relative_to(ROOT)),
+                    emotion=user["emotion"],
+                    verbosity=user["verbosity"],
+                    strategy=user["strategy"],
+                    competency=user["competency"],
                 )
             )
     return profiles
@@ -211,8 +218,14 @@ def main() -> None:
                     "run": run_idx,
                     "profile_id": profile.profile_id,
                     "sample_file_path": profile.sample_file_path,
+                    # Trait fields — used for per-trait breakdown plots
+                    "emotion": profile.emotion,
+                    "verbosity": profile.verbosity,
+                    "strategy": profile.strategy,
+                    "competency": profile.competency,
                     "method": result.name,
                     "target": sorted(normalize(profile.target_concepts)),
+                    "target_size": len(profile.target_concepts),
                     "predicted": sorted(result.final_concepts),
                     "precision": result.precision,
                     "recall": result.recall,
@@ -229,7 +242,7 @@ def main() -> None:
         avg_f1 = sum(per_method_metrics[method_name]) / len(per_method_metrics[method_name])
         print(f"{method_name:>14} | avg_f1={avg_f1:.3f}")
 
-    report_path = write_report(report_rows)
+    report_path = write_report(report_rows, [name for name, _ in methods])
     print(f"\nReport: {report_path}")
 
 if __name__ == "__main__":
