@@ -14,15 +14,17 @@ from metaLoop.system_prompt import prompt
 load_dotenv()
 
 
-def generate_direct(user_prompt: str, file_content: str = "") -> str:
+def generate_direct(user_prompt: str, file_content: str = "", previous_result: str = "") -> str:
     model_name = os.getenv("EVAL_SYSTEM_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
     llm = ChatOpenAI(model=model_name, max_retries=2)
     input_text = user_prompt
     if file_content:
-        input_text = (
-            f"{user_prompt}\n\n"
-            f"The following file is provided as a usage example or test case "
-            f"--- Attached file ---\n{file_content}"
+        input_text += (
+            f"\n\n--- Attached file (usage example) ---\n{file_content}"
+        )
+    if previous_result:
+        input_text += (
+            f"\n\n--- Previous generation (use as a starting point and improve upon it) ---\n{previous_result}"
         )
     chain = ChatPromptTemplate.from_messages([
         ("system", prompt),

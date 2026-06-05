@@ -1,5 +1,6 @@
 import json
 import os
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,7 @@ from metaLoop.metamodeling_agent import MetamodelingAgent
 
 
 GENERATED_SAMPLE_DIR = ROOT / "metaLoop" / "evaluation" / "sample_files" / "generated"
+ONE_SHOT_ITERATIONS = int(os.getenv("ONE_SHOT_ITERATIONS", "3"))
 
 
 @dataclass
@@ -46,6 +48,23 @@ def precision_recall_f1(expected: Set[str], predicted: Set[str]) -> tuple[float,
     return precision, recall, f1
 
 
+def parse_ecore_concepts(ecore_path: Path) -> List[str]:
+    """Extract all EClass names from an .ecore file as the ground-truth concept set."""
+    XSI = "http://www.w3.org/2001/XMLSchema-instance"
+    try:
+        tree = ET.parse(str(ecore_path))
+        root = tree.getroot()
+        concepts = []
+        for elem in root.iter():
+            if elem.get(f"{{{XSI}}}type") == "ecore:EClass":
+                name = elem.get("name")
+                if name:
+                    concepts.append(name)
+        return concepts
+    except ET.ParseError as exc:
+        raise ValueError(f"Failed to parse ecore file {ecore_path}: {exc}") from exc
+
+
 def read_sample_file(file_path: str | None) -> str:
     if not file_path:
         return ""
@@ -63,7 +82,6 @@ def read_sample_file(file_path: str | None) -> str:
 
 def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
     user_llm = ProfileUserLLM(profile)
-    # Use only the concept extraction pipeline (with file-based detection), skip metamodel/JjScript generation
     result = agent.run_concepts_only(
         profile.prompt,
         user_responder=user_llm.respond,
@@ -82,21 +100,29 @@ def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> 
 
 
 def run_one_shot(extractor: ConceptExtractor, profile: SimulatedUserProfile) -> MethodResult:
-    # Generate full JjScript metamodel then extract concepts from it
+    """Generate a metamodel, then iteratively refine it using the previous result as context.
+
+    The sample file is attached in every iteration to keep the input context stable.
+    The final iteration's output is used for concept extraction and scoring.
+    """
     file_content = read_sample_file(profile.sample_file_path)
+    transcript: list[dict[str, str]] = []
+
     metamodel_text = generate_direct(profile.prompt, file_content)
+    transcript.append({"stage": "generation_1", "question": profile.prompt, "answer": metamodel_text})
+
+    for iteration in range(2, ONE_SHOT_ITERATIONS + 1):
+        metamodel_text = generate_direct(profile.prompt, file_content, previous_result=metamodel_text)
+        transcript.append({
+            "stage": f"generation_{iteration}",
+            "question": profile.prompt,
+            "answer": metamodel_text,
+        })
+
     extracted = extractor.extract(profile.prompt, metamodel_text)
     predicted = normalize(extracted.get("concepts", []))
     precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), predicted)
-    transcript = [{"stage": "prompt", "question": profile.prompt, "answer": metamodel_text}]
-    return MethodResult(
-        "one_shot",
-        predicted,
-        precision,
-        recall,
-        f1,
-        transcript,
-    )
+    return MethodResult("one_shot", predicted, precision, recall, f1, transcript)
 
 
 def run_generate_then_validate(
@@ -104,21 +130,13 @@ def run_generate_then_validate(
     profile: SimulatedUserProfile,
     max_iterations: int = 3,
 ) -> MethodResult:
-    """Generate a full metamodel first, then validate and refine with the user.
-
-    Interaction mirrors the interactive approach:
-    - Per-concept yes/no confirmation (same as elicitation confirmation step).
-    - A neutral feedback question after each pass (same style as the background
-      question in knowledge_elicitation) where the user may mention concepts
-      organically but is not asked to enumerate what is missing.
-    """
+    """Generate a full metamodel first, then validate and refine with the user."""
     user_llm = ProfileUserLLM(profile)
     file_content = read_sample_file(profile.sample_file_path)
 
     def _is_yes(answer: str) -> bool:
         return answer.strip().lower().rstrip(".?!") in {"yes", "y"}
 
-    # Step 1: initial one-shot generation
     metamodel_text = generate_direct(profile.prompt, file_content)
     transcript: list[dict[str, str]] = [
         {"stage": "initial_generation", "question": profile.prompt, "answer": metamodel_text}
@@ -136,10 +154,8 @@ def run_generate_then_validate(
             if _is_yes(answer):
                 approved.append(concept)
 
-    # Step 2: confirm initial candidates one by one
     _confirm_concepts(extractor.extract(profile.prompt, metamodel_text).get("concepts", []))
 
-    # Step 3: neutral feedback question + refinement (same style as background question in interactive)
     feedback_q = "Do you have any feedback about this metamodel or the domain it covers?"
     for _ in range(max_iterations - 1):
         feedback = user_llm.respond(feedback_q, {"stage": "feedback", "approved": approved})
@@ -167,20 +183,17 @@ def write_report(rows: list[dict], methods: list[str]) -> Path:
 def build_profiles() -> list[SimulatedUserProfile]:
     profiles: list[SimulatedUserProfile] = []
     for domain_name, config in DOMAIN_CONFIGS.items():
-        for index, user in enumerate(config["users"], start=1):
-            sample_path = GENERATED_SAMPLE_DIR / f"{domain_name}_{user['sample_suffix']}.md"
-            profiles.append(
-                SimulatedUserProfile(
-                    profile_id=f"{domain_name}_user_{index:02d}_{user['role']}",
-                    prompt=config["prompt"],
-                    target_concepts=user["target_concepts"],
-                    sample_file_path=str(sample_path.relative_to(ROOT)),
-                    emotion=user["emotion"],
-                    verbosity=user["verbosity"],
-                    strategy=user["strategy"],
-                    competency=user["competency"],
-                )
+        ecore_path = ROOT / config["metamodel_path"]
+        target_concepts = parse_ecore_concepts(ecore_path)
+        sample_path = GENERATED_SAMPLE_DIR / f"{domain_name}_{config['sample_suffix']}.md"
+        profiles.append(
+            SimulatedUserProfile(
+                profile_id=domain_name,
+                prompt=config["prompt"],
+                target_concepts=target_concepts,
+                sample_file_path=str(sample_path.relative_to(ROOT)) if sample_path.exists() else None,
             )
+        )
     return profiles
 
 
@@ -209,7 +222,7 @@ def main() -> None:
         print(f"\n=== Run {run_idx} ===")
         for profile in profiles:
             print(f"\n{profile.profile_id}")
-            print(f"Target: {sorted(normalize(profile.target_concepts))}")
+            print(f"Target ({len(profile.target_concepts)} concepts): {sorted(normalize(profile.target_concepts))}")
             print(f"Sample file: {profile.sample_file_path or '(none)'}")
             for method_name, runner in methods:
                 result = runner(profile)
@@ -218,11 +231,6 @@ def main() -> None:
                     "run": run_idx,
                     "profile_id": profile.profile_id,
                     "sample_file_path": profile.sample_file_path,
-                    # Trait fields — used for per-trait breakdown plots
-                    "emotion": profile.emotion,
-                    "verbosity": profile.verbosity,
-                    "strategy": profile.strategy,
-                    "competency": profile.competency,
                     "method": result.name,
                     "target": sorted(normalize(profile.target_concepts)),
                     "target_size": len(profile.target_concepts),
@@ -233,14 +241,15 @@ def main() -> None:
                     "transcript": result.transcript,
                 })
                 print(
-                    f"{result.name:>14} | predicted={sorted(result.final_concepts)} "
+                    f"{result.name:>22} | predicted={sorted(result.final_concepts)} "
                     f"| F1={result.f1:.3f}"
                 )
 
     print("\n=== Summary ===")
     for method_name, _ in methods:
-        avg_f1 = sum(per_method_metrics[method_name]) / len(per_method_metrics[method_name])
-        print(f"{method_name:>14} | avg_f1={avg_f1:.3f}")
+        scores = per_method_metrics[method_name]
+        avg_f1 = sum(scores) / len(scores) if scores else 0.0
+        print(f"{method_name:>22} | avg_f1={avg_f1:.3f}")
 
     report_path = write_report(report_rows, [name for name, _ in methods])
     print(f"\nReport: {report_path}")
