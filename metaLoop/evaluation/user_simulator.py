@@ -83,6 +83,8 @@ class ProfileUserLLM:
 
         if stage == "familiarity":
             answer = "yes"
+        elif context.get("validation_stage") == "challenge_selection":
+            answer = "easy"
         elif context.get("validation_stage") == "file_new_concepts_selection":
             suggested = {
                 str(concept).strip().lower()

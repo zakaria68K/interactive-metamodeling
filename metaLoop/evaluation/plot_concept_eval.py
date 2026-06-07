@@ -3,16 +3,21 @@ from collections import defaultdict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = ROOT / "metaLoop" / "evaluation" / "results"
 OUTPUT_PATH = RESULTS_DIR / "concept_eval_summary.png"
+OUTPUT_PER_DOMAIN = RESULTS_DIR / "concept_eval_per_domain.png"
+OUTPUT_PRECISION_RECALL = RESULTS_DIR / "concept_eval_precision_recall.png"
 
-REPORT_FILES = [
-    RESULTS_DIR / "concept_eval_report.json",
-    RESULTS_DIR / "concept_eval_report_third_baseline_v2.json",
-]
+# Always pick the most recently modified results file
+def _find_report_files() -> list[Path]:
+    all_files = sorted(RESULTS_DIR.glob("concept_eval_*.json"), key=lambda p: p.stat().st_mtime)
+    return [all_files[-1]] if all_files else []
+
+REPORT_FILES = _find_report_files()
 
 
 def load_rows(report_files: list[Path]) -> list[dict]:
@@ -71,7 +76,7 @@ def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_
 
     ax.text(
         0.98, 0.97,
-        f"n = {total_profiles} profiles\n5 users / domain",
+        f"n = {total_profiles} domains\n3 methods",
         transform=ax.transAxes,
         ha="right", va="top",
         fontsize=8.5,
@@ -85,13 +90,97 @@ def plot_summary(summary: dict[str, dict[str, float]], output_path: Path, total_
     return output_path
 
 
+def plot_per_domain(rows: list[dict], output_path: Path) -> Path:
+    """Grouped bar chart: F1 per domain × method."""
+    methods = ["interactive", "generate_then_validate", "one_shot"]
+    labels = ["Interactive", "Gen + Validate", "One Shot"]
+    colors = ["#000000", "#888888", "#00569D"]
+
+    # Collect domains in insertion order
+    domains = list(dict.fromkeys(r["profile_id"] for r in rows))
+    # Build matrix: domain → method → f1
+    scores: dict[str, dict[str, float]] = {d: {} for d in domains}
+    for row in rows:
+        scores[row["profile_id"]][row["method"]] = float(row["f1"])
+
+    x = np.arange(len(domains))
+    width = 0.22
+    offsets = [-width, 0, width]
+
+    fig, ax = plt.subplots(figsize=(max(10, len(domains) * 1.8), 5), constrained_layout=True)
+    fig.suptitle("Concept Evaluation — F1 Score per Domain", fontsize=13, fontweight="bold")
+
+    for method, label, color, offset in zip(methods, labels, colors, offsets):
+        values = [scores[d].get(method, 0.0) for d in domains]
+        bars = ax.bar(x + offset, values, width, label=label, color=color, alpha=0.88, zorder=3)
+        for bar, v in zip(bars, values):
+            if v > 0:
+                ax.text(bar.get_x() + bar.get_width() / 2, v + 0.015,
+                        f"{v:.2f}", ha="center", va="bottom", fontsize=7.5, fontweight="bold")
+
+    ax.set_ylim(0, 1.2)
+    ax.set_ylabel("F1 Score", fontsize=11)
+    ax.set_xticks(x)
+    ax.set_xticklabels([d.upper() for d in domains], fontsize=10)
+    ax.legend(fontsize=10)
+    ax.grid(axis="y", linestyle="--", alpha=0.35)
+    ax.set_axisbelow(True)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return output_path
+
+
+def plot_precision_recall(rows: list[dict], output_path: Path) -> Path:
+    """Scatter plot: Precision vs Recall per domain, coloured by method."""
+    methods = ["interactive", "generate_then_validate", "one_shot"]
+    labels = ["Interactive", "Gen + Validate", "One Shot"]
+    colors = ["#000000", "#888888", "#00569D"]
+    markers = ["o", "s", "^"]
+
+    fig, ax = plt.subplots(figsize=(7, 6), constrained_layout=True)
+    fig.suptitle("Concept Evaluation — Precision vs Recall", fontsize=13, fontweight="bold")
+
+    for method, label, color, marker in zip(methods, labels, colors, markers):
+        method_rows = [r for r in rows if r["method"] == method]
+        xs = [float(r["recall"]) for r in method_rows]
+        ys = [float(r["precision"]) for r in method_rows]
+        ax.scatter(xs, ys, label=label, color=color, marker=marker, s=90, zorder=4, alpha=0.85)
+        for r, x, y in zip(method_rows, xs, ys):
+            ax.annotate(r["profile_id"], (x, y), textcoords="offset points",
+                        xytext=(5, 4), fontsize=7, color=color)
+
+    ax.set_xlim(-0.05, 1.1)
+    ax.set_ylim(-0.05, 1.1)
+    ax.set_xlabel("Recall", fontsize=11)
+    ax.set_ylabel("Precision", fontsize=11)
+    ax.legend(fontsize=10)
+    ax.grid(linestyle="--", alpha=0.35)
+    ax.set_axisbelow(True)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return output_path
+
+
 def main() -> None:
     rows = load_rows(REPORT_FILES)
-    total_profiles = len({r["profile_id"] for r in rows if r["method"] == "interactive"} or
-                         {r["profile_id"] for r in rows})
+    if not rows:
+        print("No result files found.")
+        return
+    total_profiles = len({r["profile_id"] for r in rows})
     summary = load_summary(rows)
-    output_path = plot_summary(summary, OUTPUT_PATH, total_profiles)
-    print(output_path)
+
+    p1 = plot_summary(summary, OUTPUT_PATH, total_profiles)
+    print(f"Average F1 bar chart  → {p1}")
+
+    p2 = plot_per_domain(rows, OUTPUT_PER_DOMAIN)
+    print(f"Per-domain F1 chart   → {p2}")
+
+    p3 = plot_precision_recall(rows, OUTPUT_PRECISION_RECALL)
+    print(f"Precision/Recall plot → {p3}")
 
 
 if __name__ == "__main__":

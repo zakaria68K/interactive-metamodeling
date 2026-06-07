@@ -80,14 +80,21 @@ def read_sample_file(file_path: str | None) -> str:
     return resolved_path.read_text(encoding="utf-8", errors="ignore")
 
 
-def run_interactive(agent: MetamodelingAgent, profile: SimulatedUserProfile) -> MethodResult:
+def run_interactive(agent: MetamodelingAgent, extractor: ConceptExtractor, profile: SimulatedUserProfile) -> MethodResult:
     user_llm = ProfileUserLLM(profile)
-    result = agent.run_concepts_only(
+    result = agent.run_iterative(
         profile.prompt,
+        human_validator=lambda _: True,  # auto-approve every chunk during evaluation
         user_responder=user_llm.respond,
-        initial_state={"attached_file_content": read_sample_file(profile.sample_file_path)},
+        initial_state={
+            "attached_file_content": read_sample_file(profile.sample_file_path),
+            "skip_isolated_validation": True,
+        },
     )
-    final_concepts = normalize(result.get("concepts", []))
+    # Extract concepts from the final generated metamodel and compare to golden ecore
+    final_metamodel = result.get("final_metamodel", "")
+    extracted = extractor.extract(profile.prompt, final_metamodel)
+    final_concepts = normalize(extracted.get("concepts", []))
     precision, recall, f1 = precision_recall_f1(normalize(profile.target_concepts), final_concepts)
     return MethodResult(
         "interactive",
@@ -208,7 +215,7 @@ def main() -> None:
     extractor = ConceptExtractor()
 
     all_methods: List[tuple[str, Callable[[SimulatedUserProfile], MethodResult]]] = [
-        ("interactive", lambda profile: run_interactive(agent, profile)),
+        ("interactive", lambda profile: run_interactive(agent, extractor, profile)),
         ("one_shot", lambda profile: run_one_shot(extractor, profile)),
         ("generate_then_validate", lambda profile: run_generate_then_validate(extractor, profile)),
     ]
