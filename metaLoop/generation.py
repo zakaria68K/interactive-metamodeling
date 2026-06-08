@@ -170,12 +170,36 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
             new_chunk = re.sub(rf"(?m)^.*\bcreate\s+(?:abstract\s+)?class\s+{cls}\b.*$", "", new_chunk, flags=re.IGNORECASE)
         new_chunk = "\n".join(line for line in new_chunk.split("\n") if line.strip())
     
+    explanation = explain_chunk(new_chunk, concept, invoke_text)
+
     # The current_chunk is the CUMULATIVE metamodel: all approved + new
     if approved_chunks:
         cumulative = "\n\n".join([*approved_chunks, new_chunk])
     else:
         cumulative = new_chunk
-    return {"current_concept": concept, "current_chunk": cumulative, "current_new_chunk": new_chunk}
+    return {
+        "current_concept": concept,
+        "current_chunk": cumulative,
+        "current_new_chunk": new_chunk,
+        "current_chunk_explanation": explanation,
+    }
+
+
+def explain_chunk(chunk: str, concept: str, invoke_text: Callable[[str], str]) -> str:
+    prompt = (
+        f"Explain this generated chunk for the concept '{concept}' in exactly two short sentences. "
+        "Describe why the included classes belong in the chunk and how they support the state machine metamodel. "
+        "Do not include the prompt or any implementation details. Output only plain text.\n\n"
+        f"Chunk:\n{chunk}"
+    )
+    explanation = invoke_text(prompt).strip()
+    # Keep only first two sentences if the model is verbose
+    sentences = re.split(r'(?<=[.!?])\s+', explanation)
+    if len(sentences) > 2:
+        explanation = ' '.join(sentences[:2]).strip()
+    if not explanation:
+        explanation = "No explanation was generated for this chunk."
+    return explanation
 
 
 def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
@@ -563,11 +587,14 @@ def human_validate(state: State, human_validator: Callable[[dict], bool] | None)
     else:
         cumulative_sample_display = new_sample
     
+    explanation = state.get("current_chunk_explanation", "") or "No explanation was generated for this chunk."
+    validation = {**state.get("current_validation", {}), "explanation": explanation}
     payload = {
         "concept": state.get("current_concept", ""),
         "chunk": cumulative_chunk,              # CUMULATIVE chunk (all classes)
+        "explanation": explanation,
         "sample_model": cumulative_sample_display,  # CUMULATIVE sample (all instances)
-        "validation": state.get("current_validation", {}),
+        "validation": validation,
     }
     
     # Add file analysis if available

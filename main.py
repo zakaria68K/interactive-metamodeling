@@ -7,6 +7,9 @@ def ask_human_validation(payload: dict) -> bool:
     print(payload.get("concept", ""))
     print("\n--- Chunk ---")
     print(payload.get("chunk", ""))
+    if payload.get("explanation"):
+        print("\n--- Explanation ---")
+        print(payload.get("explanation", ""))
     print("\n--- Sample Model ---")
     print(payload.get("sample_model", ""))
     print("\n--- Auto Validation ---")

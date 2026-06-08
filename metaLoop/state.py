@@ -12,6 +12,7 @@ class State(TypedDict):
     current_concept: str
     current_chunk: str
     current_new_chunk: str
+    current_chunk_explanation: str
     current_validated_chunk: str
     current_sample_model: str
     current_isolated_sample_model: str
