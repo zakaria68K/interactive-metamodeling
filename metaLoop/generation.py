@@ -118,6 +118,8 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
         prompt += f"\nAlready defined (DO NOT REPEAT):\n{approved_text}\n\n"
     if feedback:
         prompt += feedback
+    if state.get("rejection_feedback"):
+        prompt += f"\nREJECTION FEEDBACK: {state.get('rejection_feedback')}\n\n"
     prompt += (
         f"Domain: {state.get('intent_summary', '')}\n"
         f"Concept: {concept}\n"
@@ -588,28 +590,40 @@ def human_validate(state: State, human_validator: Callable[[dict], bool] | None)
         cumulative_sample_display = new_sample
     
     explanation = state.get("current_chunk_explanation", "") or "No explanation was generated for this chunk."
-    validation = {**state.get("current_validation", {}), "explanation": explanation}
+    validation = state.get("current_validation", {})
+    highlight_names = _chunk_class_names(new_chunk)
     payload = {
         "concept": state.get("current_concept", ""),
         "chunk": cumulative_chunk,              # CUMULATIVE chunk (all classes)
         "explanation": explanation,
         "sample_model": cumulative_sample_display,  # CUMULATIVE sample (all instances)
         "validation": validation,
+        "highlight_names": highlight_names,
     }
     
     # Add file analysis if available
     if state.get("file_analysis_validation"):
         payload["file_analysis"] = state["file_analysis_validation"]
     
-    approved = human_validator(payload) if human_validator else True
+    hv_result = human_validator(payload) if human_validator else True
+    approved = True
+    feedback = ""
+    if isinstance(hv_result, dict):
+        approved = bool(hv_result.get("approved", False))
+        feedback = str(hv_result.get("feedback", "")).strip()
+    else:
+        approved = bool(hv_result)
     
     # Still store only the NEW chunk as validated (for accumulation)
     validated_chunk = state.get("current_new_chunk", "")
     
-    return {
+    result: State = {
         "human_approved": approved,
         "current_validated_chunk": validated_chunk,
     }
+    if feedback:
+        result["rejection_feedback"] = feedback
+    return result
 
 
 def advance(state: State) -> State:

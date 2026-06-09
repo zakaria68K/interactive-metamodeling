@@ -377,6 +377,7 @@ def build_svg(
     classes: Dict[str, ClassNode],
     instances: Dict[str, InstanceNode],
     title: str = "JJscript Graph",
+    highlight_classes: set[str] | None = None,
 ) -> str:
     all_names = set(classes) | set(instances)
     if not all_names:
@@ -417,7 +418,8 @@ def build_svg(
     out.append('<?xml version="1.0" encoding="UTF-8"?>')
     out.append(
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        'style="max-width:100%;height:auto;">'
+        'width="100%" height="100%" preserveAspectRatio="xMidYMid meet" '
+        'style="max-width:100%;height:auto;display:block;">'
     )
     out.append("<defs>")
     out.append(
@@ -427,6 +429,8 @@ def build_svg(
     out.append('<path d="M0,0 L10,4 L0,8 z" fill="#4b5563"/>')
     out.append("</marker>")
     out.append("</defs>")
+    if highlight_classes:
+        out.append('<style>.highlighted-node rect { stroke: #fb923c; stroke-width: 3; } .highlighted-node text { fill: #fb923c; }</style>')
     out.append('<rect x="0" y="0" width="100%" height="100%" fill="#f8fafc"/>')
     out.append(
         f'<text x="24" y="34" font-family="Arial, sans-serif" font-size="22" '
@@ -465,6 +469,9 @@ def build_svg(
     for name, node in classes.items():
         cx, cy = tr(pos[name]); w, h = sizes[name]
         x, y = cx - w / 2, cy - h / 2
+        highlighted = bool(highlight_classes and name in highlight_classes)
+        group_class = ' class="class-node highlighted-node"' if highlighted else ' class="class-node"'
+        out.append(f'<g{group_class} data-name="{html.escape(name)}">')
         out.append(
             f'<rect x="{x:.2f}" y="{y:.2f}" width="{w}" height="{h}" rx="10" '
             'fill="#ffffff" stroke="#334155" stroke-width="2"/>'
@@ -485,6 +492,7 @@ def build_svg(
                 f"{html.escape(a)}: {html.escape(t)}</text>"
             )
             ty += 22
+        out.append('</g>')
 
     for name, inst in instances.items():
         cx, cy = tr(pos[name]); w, h = sizes[name]

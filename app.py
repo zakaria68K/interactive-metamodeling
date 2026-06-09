@@ -70,9 +70,8 @@ def _submit_pre_evaluation(name: str, *answers: str) -> tuple[str, str, object]:
         question["id"]: (answers[idx] if idx < len(answers) else "")
         for idx, question in enumerate(QUIZ_QUESTIONS)
     }
-    profile = _save_user_profile(username, pre_data=responses)
-    score = profile.get("pre_score", 0)
-    status = f"Pre-use evaluation saved. Score: {score}%."
+    _save_user_profile(username, pre_data=responses)
+    status = "Pre-use evaluation saved successfully."
     return status, f"Saved pre-use questionnaire for {html.escape(username)}.", gr.update(visible=True)
 
 
@@ -85,9 +84,8 @@ def _submit_post_evaluation(name: str, *answers: str) -> tuple[str, str]:
         question["id"]: (answers[idx] if idx < len(answers) else "")
         for idx, question in enumerate(QUIZ_QUESTIONS)
     }
-    profile = _save_user_profile(username, post_data=responses)
-    score = profile.get("post_score", 0)
-    status = f"Post-use evaluation saved. Score: {score}%." 
+    _save_user_profile(username, post_data=responses)
+    status = "Post-use evaluation saved successfully."
     return status, f"Saved post-use questionnaire for {html.escape(username)}."
 
 
@@ -389,7 +387,7 @@ def _run_agent(sess: _Session, prompt: str) -> None:
         sess.chat.append({"role": "user", "content": answer})
         return answer
 
-    def human_validator(payload: dict) -> bool:
+    def human_validator(payload: dict) -> bool | dict:
         sess.log.append(f"[{_ts()}] Review: {payload.get('concept', '')}")
         sess.pending_payload = payload
         if payload.get("chunk"):
@@ -399,8 +397,20 @@ def _run_agent(sess: _Session, prompt: str) -> None:
         sess.approval_q.put(payload)
         decision = sess.approval_a.get(block=True)
         sess.waiting_approval = False
-        sess.log.append(f"[{_ts()}] {'OK' if decision else 'X'} {payload.get('concept', '')}")
-        return decision
+
+        approved = True
+        feedback = ""
+        if isinstance(decision, dict):
+            approved = bool(decision.get("approved", False))
+            feedback = str(decision.get("feedback", "")).strip()
+        else:
+            approved = bool(decision)
+
+        sess.log.append(f"[{_ts()}] {'OK' if approved else 'X'} {payload.get('concept', '')}")
+        if feedback:
+            sess.log.append(f"[{_ts()}] Rejection feedback: {feedback}")
+            sess.pending_payload["rejection_feedback"] = feedback
+        return {"approved": approved, "feedback": feedback} if feedback else approved
 
     try:
         initial_state = (
@@ -537,14 +547,21 @@ def poll(sid: str):
             gr.update(visible=False), gr.update(visible=False), gr.update(visible=False),
             gr.update(visible=True),
             gr.update(value=f"**{p.get('concept', '')}**"),
-            gr.update(value=_to_svg(p.get("chunk", ""), f"Chunk: {p.get('concept', '')}")),
-            gr.update(value=_to_svg(p.get("sample_model", ""), "Sample")),
-            gr.update(visible=False),
+            gr.update(value=_to_svg(
+                p.get("chunk", ""),
+                f"Chunk: {p.get('concept', '')}",
+                highlight_names=set(p.get("highlight_names", [])) if p.get("highlight_names") else None,
+            )),
+            gr.update(value=_to_svg(
+                p.get("sample_model", ""),
+                f"Sample: {p.get('concept', '')}",
+            )),
+            gr.update(value=p.get("explanation", "")),
             gr.update(value=p.get("validation", {})),
-            gr.update(), gr.update(),
+            gr.update(),
+            gr.update(),
             log_text,
         )
-
     yes_no       = _is_yes_no_question(sess.current_elicitation_question)
     is_challenge = "challenge level" in sess.current_elicitation_question.lower()
     waiting      = sess.waiting_elicitation
@@ -580,14 +597,26 @@ def submit_challenge_level(level: str, sid: str):
 
 def approve(sid: str):
     if sid in _sessions:
-        _sessions[sid].approval_a.put(True)
-    return gr.update(visible=False)
+        sess = _sessions[sid]
+        sess.approval_a.put(True)
+        sess.pending_rejection_feedback = ""
+    return gr.update(visible=False), gr.update(visible=False)
 
 
-def reject(sid: str):
+def begin_reject_feedback(sid: str):
     if sid in _sessions:
-        _sessions[sid].approval_a.put(False)
-    return gr.update(visible=False)
+        sess = _sessions[sid]
+        sess.pending_rejection_feedback = ""
+    return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(value="")
+
+
+def submit_rejection_feedback(feedback: str, sid: str):
+    if sid in _sessions:
+        sess = _sessions[sid]
+        reason = (feedback or "").strip()
+        sess.pending_rejection_feedback = reason
+        sess.approval_a.put({"approved": False, "feedback": reason})
+    return gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), gr.update(value="")
 
 
 def attach_file(file_obj, sid: str):
@@ -891,6 +920,112 @@ body, .gradio-container {
     font-size: 14px !important;
 }
 
+.reject-feedback-btn {
+    background: #ea580c !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    color: white !important;
+}
+
+.svg-preview {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    background: #ffffff;
+    box-shadow: 0 1px 5px rgba(15,23,42,0.08);
+}
+.svg-preview.current-chunk {
+    border-color: #fb923c;
+    box-shadow: 0 0 0 3px rgba(251,146,60,0.18);
+}
+.svg-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 13px;
+    color: #334155;
+}
+.svg-preview-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.svg-preview-actions a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+}
+.svg-preview-inner {
+    max-height: 440px;
+    overflow: auto;
+    padding: 10px;
+    background: #ffffff;
+}
+.svg-preview-inner svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+.svg-overlay {
+    position: fixed;
+    inset: 0;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    background: rgba(15,23,42,0.86);
+    z-index: 12000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.svg-overlay:target {
+    visibility: visible;
+    opacity: 1;
+}
+.svg-overlay-content {
+    position: relative;
+    width: min(100%, 1200px);
+    max-height: 100%;
+    overflow: auto;
+    background: #0f172a;
+    border-radius: 18px;
+    padding: 20px;
+}
+.svg-overlay-title {
+    color: #f8fafc;
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.svg-overlay-hint {
+    color: #cbd5e1;
+    font-size: 13px;
+    margin-bottom: 14px;
+}
+.svg-overlay-inner {
+    overflow: auto;
+    max-height: calc(100vh - 140px);
+}
+.svg-overlay-inner svg {
+    width: 100%;
+    height: auto;
+}
+.svg-overlay-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    color: #f8fafc;
+    font-size: 24px;
+    text-decoration: none;
+}
+
 /* ── Results tabs ── */
 .results-section {
     background: #ffffff;
@@ -1073,6 +1208,17 @@ with gr.Blocks(title="Metamodel Generator") as demo:
                     reject_btn  = gr.Button("✗ Reject",  variant="stop",    scale=1,
                                             elem_classes="reject-btn")
 
+                with gr.Group(visible=False, elem_id="reject-feedback-group") as reject_feedback_group:
+                    gr.Markdown("**What did you not like about this chunk? This feedback will help the model improve the next iteration.**")
+                    reject_reason_box = gr.Textbox(
+                        placeholder="Describe the problem so the model can improve this chunk...",
+                        lines=3, show_label=False, scale=4,
+                    )
+                    submit_rejection_feedback_btn = gr.Button(
+                        "Submit rejection feedback",
+                        variant="stop", scale=1, elem_classes="reject-feedback-btn"
+                    )
+
     # ── Results (tabbed) ──────────────────────────────────────────────────────
     with gr.Group(elem_classes="results-section") as results_section:
         with gr.Tabs():
@@ -1202,8 +1348,13 @@ with gr.Blocks(title="Metamodel Generator") as demo:
     confirm_add_btn.click(confirm_add_concepts, [new_concepts_box, sid_state],
                           [new_concepts_box, new_concepts_group, file_status_lbl])
 
-    approve_btn.click(approve, [sid_state], [approval_panel])
-    reject_btn.click( reject,  [sid_state], [approval_panel])
+    approve_btn.click(approve, [sid_state], [approval_panel, reject_feedback_group])
+    reject_btn.click(begin_reject_feedback, [sid_state], [reject_feedback_group, approve_btn, reject_btn, reject_reason_box])
+    submit_rejection_feedback_btn.click(
+        submit_rejection_feedback,
+        [reject_reason_box, sid_state],
+        [reject_feedback_group, approve_btn, reject_btn, reject_reason_box],
+    )
 
     profile_nav_btn.click(_show_profile_page, [], [input_bar, main_workspace, results_section, profile_page])
     back_to_tool_btn.click(_show_tool_page, [], [input_bar, main_workspace, results_section, profile_page])
