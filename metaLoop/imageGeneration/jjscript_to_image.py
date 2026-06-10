@@ -2,30 +2,13 @@
 """
 Self-contained JJscript -> graph image converter.
 
-Supported JJscript subset:
+Relation kinds rendered:
+  inheritance  : hollow triangle arrowhead (UML generalization)
+  containment  : filled diamond at source  (UML composition)
+  reference    : open arrowhead            (UML association)
+  instance link: dashed open arrowhead
 
-    # Metamodel (M2)
-    create class State
-    create attribute name in State type String
-    create reference transitions in State type Transition [*]
-
-    # Instance model (M1)
-    create object State s1
-    set name of s1 to "Idle"
-    set transitions of s1 to t1
-
-Rules:
-- "create class" / "create abstract class" / "create class X extends Y" define classes.
-- "create attribute" / "create reference" / "create containment" define structure.
-- "create object <ClassName> <instanceName>" defines an instance.
-- "set <attr> of <instance> to <value>" sets an attribute value or reference link.
-- "add <value> to <ref> of <instance>" adds a reference link (multi-valued).
-- "end:" is optional and ignored.
-- # and // comments are stripped.
-
-Output:
-- .svg is always supported (pure stdlib).
-- .png is supported if Pillow is installed (preferred) or if cairosvg is installed.
+Abstract classes rendered with italic name and dashed border.
 """
 
 from __future__ import annotations
@@ -40,16 +23,20 @@ import sys
 from typing import Dict, List, Optional, Tuple
 
 
+# ── data model ────────────────────────────────────────────────────────────────
+
 @dataclass
 class Relation:
     name: str
     target: str
     multiplicity: str = ""
+    kind: str = "reference"   # "reference" | "containment" | "inheritance" | "instance"
 
 
 @dataclass
 class ClassNode:
     name: str
+    is_abstract: bool = False
     attributes: List[Tuple[str, str]] = field(default_factory=list)
     relations: List[Relation] = field(default_factory=list)
 
@@ -64,11 +51,6 @@ class InstanceNode:
 
 # ── regexes ───────────────────────────────────────────────────────────────────
 
-CLASS_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*$")
-ATTR_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([^\n#]+?)\s*$")
-REL_RE = re.compile(
-    r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\[[^\]]+\])?\s*$"
-)
 CREATE_CLASS_RE = re.compile(
     r"^\s*create\s+class\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", re.IGNORECASE
 )
@@ -80,16 +62,17 @@ CREATE_CLASS_EXTENDS_RE = re.compile(
     r"^\s*create\s+class\s+([A-Za-z_][A-Za-z0-9_]*)\s+extends\s+([A-Za-z_][A-Za-z0-9_]*)\s*$",
     re.IGNORECASE,
 )
+# standalone: "ChildClass extends ParentClass"
+STANDALONE_EXTENDS_RE = re.compile(
+    r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s+extends\s+([A-Za-z_][A-Za-z0-9_]*)\s*$",
+    re.IGNORECASE,
+)
 CREATE_ATTR_RE = re.compile(
-    r"^\s*create\s+attribute\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([^\n#]+?)\s*$",
+    r"^\s*create\s+attribute\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([^\n#\[]+?)\s*(?:\[[^\]]*\])?\s*$",
     re.IGNORECASE,
 )
 CREATE_REF_RE = re.compile(
-    r"^\s*create\s+(?:reference|containment)\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([A-Za-z_][A-Za-z0-9_]*)\s*(\[[^\]]+\])?\s*$",
-    re.IGNORECASE,
-)
-CREATE_INSTANCE_RE = re.compile(
-    r"^\s*create\s+instance\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s*$",
+    r"^\s*create\s+(reference|containment)\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([A-Za-z_][A-Za-z0-9_]*)\s*(\[[^\]]+\])?\s*$",
     re.IGNORECASE,
 )
 CREATE_OBJECT_RE = re.compile(
@@ -118,56 +101,36 @@ def _strip_comment(line: str) -> str:
 
 # ── parser ────────────────────────────────────────────────────────────────────
 
-def parse_jjscript(
-    text: str,
-) -> Tuple[Dict[str, ClassNode], Dict[str, InstanceNode]]:
-    """Parse JJscript text into (classes, instances)."""
+def parse_jjscript(text: str) -> Tuple[Dict[str, ClassNode], Dict[str, InstanceNode]]:
     classes: Dict[str, ClassNode] = {}
     instances: Dict[str, InstanceNode] = {}
-    current: Optional[ClassNode] = None
-    current_instance: Optional[InstanceNode] = None
 
     for raw_line in text.splitlines():
         line = _strip_comment(raw_line).strip()
-        if not line:
+        if not line or line.lower() in {"end:", "create"}:
             continue
 
-        if line.lower() == "end:":
-            current = None
-            current_instance = None
-            continue
-
-        if line.lower() == "create":
-            continue
-
-        # ── instance: create object ──────────────────────────────────────────
+        # ── create object (instance) ─────────────────────────────────────────
         m = CREATE_OBJECT_RE.match(line)
         if m:
             class_name, inst_name = m.groups()
-            inst = InstanceNode(name=inst_name, class_name=class_name)
-            instances[inst_name] = inst
-            current_instance = inst
-            current = None
+            instances[inst_name] = InstanceNode(name=inst_name, class_name=class_name)
             continue
 
-        # ── instance: set attr/ref  (of syntax) ─────────────────────────────
+        # ── set / add (instance links) ───────────────────────────────────────
         m = SET_VALUE_RE.match(line)
         if m:
             attr, inst_name, value = m.groups()
             inst = instances.get(inst_name)
             if inst:
                 value_clean = value.strip().strip('"').strip("'")
-                # Treat as a reference only when:
-                # - the value (unquoted) resolves to a known instance, AND
-                # - the original value was NOT quoted (quoted values are always literals)
                 originally_quoted = value.strip().startswith(("'", '"'))
                 if not originally_quoted and value_clean in instances:
-                    inst.relations.append(Relation(name=attr, target=value_clean))
+                    inst.relations.append(Relation(name=attr, target=value_clean, kind="instance"))
                 else:
                     inst.attributes.append((attr, value_clean))
             continue
 
-        # ── instance: set inst.attr = value  (dot syntax) ───────────────────
         m = SET_DOT_RE.match(line)
         if m:
             inst_name, attr, value = m.groups()
@@ -176,95 +139,76 @@ def parse_jjscript(
                 value_clean = value.strip().strip('"').strip("'")
                 originally_quoted = value.strip().startswith(("'", '"'))
                 if not originally_quoted and value_clean in instances:
-                    inst.relations.append(Relation(name=attr, target=value_clean))
+                    inst.relations.append(Relation(name=attr, target=value_clean, kind="instance"))
                 else:
                     inst.attributes.append((attr, value_clean))
             continue
 
-        # ── instance: add value to ref of inst ──────────────────────────────
         m = ADD_TO_RE.match(line)
         if m:
             value, ref_name, inst_name = m.groups()
             inst = instances.get(inst_name)
-            if inst:
-                if value in instances:
-                    inst.relations.append(Relation(name=ref_name, target=value))
+            if inst and value in instances:
+                inst.relations.append(Relation(name=ref_name, target=value, kind="instance"))
             continue
 
-        # ── metamodel: create class (extends) ───────────────────────────────
-        m = CREATE_CLASS_EXTENDS_RE.match(line) or CREATE_CLASS_RE.match(line)
-        if m:
-            class_name = m.group(1)
-            current = classes.setdefault(class_name, ClassNode(name=class_name))
-            if m.lastindex and m.lastindex >= 2 and m.group(2):
-                parent = m.group(2)
-                classes.setdefault(parent, ClassNode(name=parent))
-                current.relations.append(Relation(name="extends", target=parent))
-            current_instance = None
-            continue
-
+        # ── create abstract class [extends] ──────────────────────────────────
         m = CREATE_ABSTRACT_CLASS_RE.match(line)
         if m:
-            class_name = m.group(1)
-            current = classes.setdefault(class_name, ClassNode(name=class_name))
-            if m.group(2):
-                parent = m.group(2)
+            class_name, parent = m.group(1), m.group(2)
+            node = classes.setdefault(class_name, ClassNode(name=class_name))
+            node.is_abstract = True
+            if parent:
                 classes.setdefault(parent, ClassNode(name=parent))
-                current.relations.append(Relation(name="extends", target=parent))
-            current_instance = None
+                node.relations.append(Relation(name="", target=parent, kind="inheritance"))
             continue
 
+        # ── create class [extends] ────────────────────────────────────────────
+        m = CREATE_CLASS_EXTENDS_RE.match(line)
+        if m:
+            class_name, parent = m.groups()
+            node = classes.setdefault(class_name, ClassNode(name=class_name))
+            classes.setdefault(parent, ClassNode(name=parent))
+            node.relations.append(Relation(name="", target=parent, kind="inheritance"))
+            continue
+
+        m = CREATE_CLASS_RE.match(line)
+        if m:
+            classes.setdefault(m.group(1), ClassNode(name=m.group(1)))
+            continue
+
+        # ── standalone: Child extends Parent ─────────────────────────────────
+        m = STANDALONE_EXTENDS_RE.match(line)
+        if m:
+            child, parent = m.groups()
+            node = classes.setdefault(child, ClassNode(name=child))
+            classes.setdefault(parent, ClassNode(name=parent))
+            # avoid duplicate if already added via create class X extends Y
+            already = any(r.kind == "inheritance" and r.target == parent for r in node.relations)
+            if not already:
+                node.relations.append(Relation(name="", target=parent, kind="inheritance"))
+            continue
+
+        # ── create attribute ──────────────────────────────────────────────────
         m = CREATE_ATTR_RE.match(line)
         if m:
             attr_name, owner_name, attr_type = m.groups()
             owner = classes.setdefault(owner_name, ClassNode(name=owner_name))
             owner.attributes.append((attr_name, attr_type.strip()))
-            current = owner
-            current_instance = None
             continue
 
+        # ── create reference / containment ────────────────────────────────────
         m = CREATE_REF_RE.match(line)
         if m:
-            rel_name, owner_name, target_name, mult = m.groups()
+            rel_kind, rel_name, owner_name, target_name, mult = m.groups()
             owner = classes.setdefault(owner_name, ClassNode(name=owner_name))
-            owner.relations.append(
-                Relation(name=rel_name, target=target_name, multiplicity=(mult or ""))
-            )
+            owner.relations.append(Relation(
+                name=rel_name,
+                target=target_name,
+                multiplicity=(mult or ""),
+                kind=rel_kind.lower(),   # "reference" or "containment"
+            ))
             classes.setdefault(target_name, ClassNode(name=target_name))
-            current = owner
-            current_instance = None
-            continue
-
-        m = CREATE_INSTANCE_RE.match(line)
-        if m:
-            inst_name, owner_name = m.groups()
-            current = classes.setdefault(owner_name, ClassNode(name=owner_name))
-            current_instance = None
-            continue
-
-        m = CLASS_RE.match(line)
-        if m:
-            class_name = m.group(1)
-            current = classes.setdefault(class_name, ClassNode(name=class_name))
-            current_instance = None
-            continue
-
-        if current is None and current_instance is None:
-            continue
-
-        m = REL_RE.match(line)
-        if m and current:
-            rel_name, target, mult = m.groups()
-            current.relations.append(
-                Relation(name=rel_name, target=target, multiplicity=(mult or ""))
-            )
-            classes.setdefault(target, ClassNode(name=target))
-            continue
-
-        m = ATTR_RE.match(line)
-        if m and current:
-            attr_name, attr_type = m.groups()
-            current.attributes.append((attr_name, attr_type.strip()))
             continue
 
     return classes, instances
@@ -281,7 +225,7 @@ def _compute_node_sizes(
         max_line = len(name)
         for a, t in node.attributes:
             max_line = max(max_line, len(f"{a}: {t}"))
-        width = max(180, 12 * max_line + 36)
+        width  = max(180, 12 * max_line + 36)
         height = 48 + max(0, len(node.attributes)) * 24
         sizes[name] = (width, height)
     for name, inst in instances.items():
@@ -289,7 +233,7 @@ def _compute_node_sizes(
         max_line = len(label)
         for a, v in inst.attributes:
             max_line = max(max_line, len(f"{a} = {v}"))
-        width = max(180, 12 * max_line + 36)
+        width  = max(180, 12 * max_line + 36)
         height = 48 + max(0, len(inst.attributes)) * 24
         sizes[name] = (width, height)
     return sizes
@@ -299,15 +243,8 @@ def _compute_layout(
     classes: Dict[str, ClassNode],
     instances: Dict[str, InstanceNode],
 ) -> Dict[str, Tuple[float, float]]:
-    """
-    Two-ring layout:
-      - metamodel classes on the outer ring
-      - instances on the inner ring
-    Falls back to a single ring when one group is empty.
-    Uses larger spacing to prevent overlaps with many nodes.
-    """
     class_names = sorted(classes.keys())
-    inst_names = sorted(instances.keys())
+    inst_names  = sorted(instances.keys())
     positions: Dict[str, Tuple[float, float]] = {}
 
     def place_ring(names: List[str], radius: float, offset_x: float = 0.0) -> None:
@@ -322,23 +259,17 @@ def _compute_layout(
             positions[name] = (offset_x + radius * math.cos(angle), radius * math.sin(angle))
 
     n_c, n_i = len(class_names), len(inst_names)
-
     if n_c == 0 and n_i == 0:
         return {}
     elif n_c == 0:
-        # Increased spacing: 85 → 120 per instance
-        place_ring(inst_names, max(250.0, 120.0 * n_i))
+        place_ring(inst_names, max(200.0, 80.0 * n_i))
     elif n_i == 0:
-        # Increased spacing: 90 → 150 per class
-        place_ring(class_names, max(280.0, 150.0 * n_c))
+        place_ring(class_names, max(200.0, 80.0 * n_c))
     else:
-        # Increased spacing: 100 → 160 per class on outer ring
-        outer_r = max(350.0, 160.0 * n_c)
-        # Increased inner spacing: 60 → 100, cap at 50% instead of 52%
-        inner_r = min(max(180.0, 100.0 * n_i), outer_r * 0.50)
+        outer_r = max(250.0, 80.0 * n_c)
+        inner_r = min(max(150.0, 60.0 * n_i), outer_r * 0.50)
         place_ring(class_names, outer_r)
         place_ring(inst_names, inner_r)
-
     return positions
 
 
@@ -347,10 +278,8 @@ def _bundle_key(source: str, target: str) -> Tuple[str, str]:
 
 
 def _edge_lane_offset(
-    source_name: str,
-    target_name: str,
-    bundle_totals: Dict[Tuple[str, str], int],
-    bundle_seen: Dict[Tuple[str, str], int],
+    source_name: str, target_name: str,
+    bundle_totals: Dict, bundle_seen: Dict,
     lane_gap: float = 18.0,
 ) -> float:
     key = _bundle_key(source_name, target_name)
@@ -360,9 +289,7 @@ def _edge_lane_offset(
     return (idx - (total - 1) / 2.0) * lane_gap
 
 
-def _line_box_intersection(
-    cx: float, cy: float, tx: float, ty: float, w: float, h: float
-) -> Tuple[float, float]:
+def _line_box_intersection(cx, cy, tx, ty, w, h) -> Tuple[float, float]:
     dx, dy = tx - cx, ty - cy
     if dx == 0 and dy == 0:
         return cx, cy
@@ -377,14 +304,14 @@ def build_svg(
     classes: Dict[str, ClassNode],
     instances: Dict[str, InstanceNode],
     title: str = "JJscript Graph",
-    highlight_classes: set[str] | None = None,
+    highlight_classes: set | None = None,
 ) -> str:
     all_names = set(classes) | set(instances)
     if not all_names:
         return "<svg xmlns='http://www.w3.org/2000/svg'><text x='10' y='20'>Empty</text></svg>"
 
     sizes = _compute_node_sizes(classes, instances)
-    pos = _compute_layout(classes, instances)
+    pos   = _compute_layout(classes, instances)
 
     min_x = min(pos[n][0] - sizes[n][0] / 2 for n in all_names)
     max_x = max(pos[n][0] + sizes[n][0] / 2 for n in all_names)
@@ -392,12 +319,13 @@ def build_svg(
     max_y = max(pos[n][1] + sizes[n][1] / 2 for n in all_names)
 
     padding = 80
-    width = int(max_x - min_x + 2 * padding)
-    height = int(max_y - min_y + 2 * padding)
+    W = int(max_x - min_x + 2 * padding)
+    H = int(max_y - min_y + 2 * padding)
 
-    def tr(pt: Tuple[float, float]) -> Tuple[float, float]:
+    def tr(pt):
         return pt[0] - min_x + padding, pt[1] - min_y + padding
 
+    # ── collect edges ─────────────────────────────────────────────────────────
     all_relations: List[Tuple[str, str, Relation]] = []
     for src, node in classes.items():
         for rel in node.relations:
@@ -408,35 +336,28 @@ def build_svg(
             if rel.target in all_names:
                 all_relations.append((src, rel.target, rel))
 
-    bundle_totals: Dict[Tuple[str, str], int] = {}
+    bundle_totals: Dict = {}
     for src, tgt, _ in all_relations:
         key = _bundle_key(src, tgt)
         bundle_totals[key] = bundle_totals.get(key, 0) + 1
-    bundle_seen: Dict[Tuple[str, str], int] = {}
+    bundle_seen: Dict = {}
 
     out: List[str] = []
     out.append('<?xml version="1.0" encoding="UTF-8"?>')
     out.append(
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
         'width="100%" height="100%" preserveAspectRatio="xMidYMid meet" '
         'style="max-width:100%;height:auto;display:block;">'
     )
-    out.append("<defs>")
-    out.append(
-        '<marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" '
-        'orient="auto" markerUnits="strokeWidth">'
-    )
-    out.append('<path d="M0,0 L10,4 L0,8 z" fill="#4b5563"/>')
-    out.append("</marker>")
-    out.append("</defs>")
-    if highlight_classes:
-        out.append('<style>.highlighted-node rect { stroke: #fb923c; stroke-width: 3; } .highlighted-node text { fill: #fb923c; }</style>')
+
+    out.append("<defs></defs>")
     out.append('<rect x="0" y="0" width="100%" height="100%" fill="#f8fafc"/>')
     out.append(
         f'<text x="24" y="34" font-family="Arial, sans-serif" font-size="22" '
         f'fill="#0f172a" font-weight="700">{html.escape(title)}</text>'
     )
 
+    # ── draw edges ────────────────────────────────────────────────────────────
     for src, tgt, rel in all_relations:
         sx, sy = tr(pos[src]); sw, sh = sizes[src]
         tx2, ty2 = tr(pos[tgt]); tw, th = sizes[tgt]
@@ -446,42 +367,114 @@ def build_svg(
         length = math.hypot(dx, dy) or 1.0
         nx, ny = -dy / length, dx / length
         lo = _edge_lane_offset(src, tgt, bundle_totals, bundle_seen)
-        x1 += nx * lo; y1 += ny * lo; x2 += nx * lo; y2 += ny * lo
-        dash = ' stroke-dasharray="6,3"' if src in instances else ""
-        out.append(
-            f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" '
-            f'stroke="#4b5563" stroke-width="1.8" marker-end="url(#arrow)"{dash}/>'
-        )
-        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-        label = rel.name + (f" {rel.multiplicity}" if rel.multiplicity else "")
-        ly = my + (lo / 18.0) * 14.0
-        lw = max(96, 8 * len(label) + 16)
-        out.append(
-            f'<rect x="{mx - lw/2:.2f}" y="{ly - 13:.2f}" width="{lw:.2f}" height="20" '
-            'rx="6" fill="#ffffff" opacity="0.9"/>'
-        )
-        out.append(
-            f'<text x="{mx:.2f}" y="{ly + 2:.2f}" text-anchor="middle" '
-            f'font-family="Arial, sans-serif" font-size="12" fill="#1f2937">'
-            f"{html.escape(label)}</text>"
-        )
+        x1 += nx * lo; y1 += ny * lo
+        x2 += nx * lo; y2 += ny * lo
 
+        kind = rel.kind
+        ux, uy = dx / length, dy / length  # unit vector source→target
+
+        if kind == "inheritance":
+            color = "#7c3aed"
+            # line stops short of target to leave room for hollow triangle
+            TRI = 14
+            lx2 = x2 - ux * TRI; ly2_e = y2 - uy * TRI
+            out.append(
+                f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{lx2:.2f}" y2="{ly2_e:.2f}" '
+                f'stroke="{color}" stroke-width="1.8"/>'
+            )
+            # hollow triangle pointing at (x2,y2)
+            perp_x, perp_y = -uy * TRI * 0.6, ux * TRI * 0.6
+            p1x, p1y = x2, y2
+            p2x, p2y = lx2 + perp_x, ly2_e + perp_y
+            p3x, p3y = lx2 - perp_x, ly2_e - perp_y
+            out.append(
+                f'<polygon points="{p1x:.2f},{p1y:.2f} {p2x:.2f},{p2y:.2f} {p3x:.2f},{p3y:.2f}" '
+                f'fill="#ffffff" stroke="{color}" stroke-width="1.8"/>'
+            )
+
+        elif kind == "containment":
+            color = "#1d4ed8"
+            DIA = 10  # half-length of diamond
+            # diamond back at node border, tip points toward target
+            d_back_x, d_back_y = x1, y1
+            d_tip_x  = x1 + ux * DIA * 2;   d_tip_y  = y1 + uy * DIA * 2
+            d_left_x = x1 + ux * DIA - uy * DIA * 0.7
+            d_left_y = y1 + uy * DIA + ux * DIA * 0.7
+            d_right_x = x1 + ux * DIA + uy * DIA * 0.7
+            d_right_y = y1 + uy * DIA - ux * DIA * 0.7
+            # line from diamond tip to target
+            out.append(
+                f'<line x1="{d_tip_x:.2f}" y1="{d_tip_y:.2f}" '
+                f'x2="{x2:.2f}" y2="{y2:.2f}" '
+                f'stroke="{color}" stroke-width="2"/>'
+            )
+            # filled diamond (drawn on top of line)
+            out.append(
+                f'<polygon points="{d_back_x:.2f},{d_back_y:.2f} {d_left_x:.2f},{d_left_y:.2f} '
+                f'{d_tip_x:.2f},{d_tip_y:.2f} {d_right_x:.2f},{d_right_y:.2f}" '
+                f'fill="{color}" stroke="{color}" stroke-width="1"/>'
+            )
+
+        elif kind == "instance":
+            color = "#64748b"
+            out.append(
+                f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" '
+                f'stroke="{color}" stroke-width="1.5" stroke-dasharray="6,3"/>'
+            )
+
+        else:  # reference — open arrowhead
+            color = "#4b5563"
+            ARR = 10
+            lx2 = x2 - ux * ARR; ly2_e = y2 - uy * ARR
+            perp_x, perp_y = -uy * ARR * 0.6, ux * ARR * 0.6
+            out.append(
+                f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{lx2:.2f}" y2="{ly2_e:.2f}" '
+                f'stroke="{color}" stroke-width="1.8"/>'
+            )
+            out.append(
+                f'<polyline points="{lx2 + perp_x:.2f},{ly2_e + perp_y:.2f} {x2:.2f},{y2:.2f} '
+                f'{lx2 - perp_x:.2f},{ly2_e - perp_y:.2f}" '
+                f'fill="none" stroke="{color}" stroke-width="1.8"/>'
+            )
+
+        # edge label: skip for inheritance (no name) and instance links (implicit)
+        label = rel.name + (f" {rel.multiplicity}" if rel.multiplicity else "")
+        if label.strip() and kind not in {"inheritance", "instance"}:
+            mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+            ly2 = my + (lo / 18.0) * 14.0
+            lw  = max(80, 8 * len(label) + 16)
+            out.append(
+                f'<rect x="{mx - lw/2:.2f}" y="{ly2 - 13:.2f}" width="{lw:.2f}" height="20" '
+                f'rx="5" fill="#ffffff" opacity="0.9"/>'
+            )
+            out.append(
+                f'<text x="{mx:.2f}" y="{ly2 + 2:.2f}" text-anchor="middle" '
+                f'font-family="Arial, sans-serif" font-size="11" fill="{color}">'
+                f"{html.escape(label)}</text>"
+            )
+
+    # ── draw class nodes ──────────────────────────────────────────────────────
     for name, node in classes.items():
         cx, cy = tr(pos[name]); w, h = sizes[name]
         x, y = cx - w / 2, cy - h / 2
         highlighted = bool(highlight_classes and name in highlight_classes)
-        group_class = ' class="class-node highlighted-node"' if highlighted else ' class="class-node"'
-        out.append(f'<g{group_class} data-name="{html.escape(name)}">')
+        stroke_color = "#fb923c" if highlighted else "#334155"
+        stroke_w     = 3 if highlighted else 2
+        header_color = "#6d28d9" if node.is_abstract else "#0f766e"
+        border_dash  = ' stroke-dasharray="6,3"' if node.is_abstract else ""
+
+        out.append(f'<g class="class-node" data-name="{html.escape(name)}">')
         out.append(
             f'<rect x="{x:.2f}" y="{y:.2f}" width="{w}" height="{h}" rx="10" '
-            'fill="#ffffff" stroke="#334155" stroke-width="2"/>'
+            f'fill="#ffffff" stroke="{stroke_color}" stroke-width="{stroke_w}"{border_dash}/>'
         )
         out.append(
-            f'<rect x="{x:.2f}" y="{y:.2f}" width="{w}" height="34" rx="10" fill="#0f766e"/>'
+            f'<rect x="{x:.2f}" y="{y:.2f}" width="{w}" height="34" rx="10" fill="{header_color}"/>'
         )
+        font_style = 'font-style="italic"' if node.is_abstract else 'font-weight="700"'
         out.append(
             f'<text x="{cx:.2f}" y="{y + 22:.2f}" text-anchor="middle" '
-            'font-family="Arial, sans-serif" font-size="14" fill="#ffffff" font-weight="700">'
+            f'font-family="Arial, sans-serif" font-size="14" fill="#ffffff" {font_style}>'
             f"{html.escape(name)}</text>"
         )
         ty = y + 52
@@ -491,9 +484,10 @@ def build_svg(
                 'font-family="Arial, sans-serif" font-size="12" fill="#1e293b">'
                 f"{html.escape(a)}: {html.escape(t)}</text>"
             )
-            ty += 22
-        out.append('</g>')
+            ty += 24
+        out.append("</g>")
 
+    # ── draw instance nodes ───────────────────────────────────────────────────
     for name, inst in instances.items():
         cx, cy = tr(pos[name]); w, h = sizes[name]
         x, y = cx - w / 2, cy - h / 2
@@ -517,7 +511,7 @@ def build_svg(
                 'font-family="Arial, sans-serif" font-size="12" fill="#1e293b">'
                 f"{html.escape(a)} = {html.escape(v)}</text>"
             )
-            ty += 22
+            ty += 24
 
     out.append("</svg>")
     return "\n".join(out)
@@ -538,7 +532,7 @@ def _render_png_with_pillow(
 
     all_names = set(classes) | set(instances)
     sizes = _compute_node_sizes(classes, instances)
-    pos = _compute_layout(classes, instances)
+    pos   = _compute_layout(classes, instances)
 
     min_x = min(pos[n][0] - sizes[n][0] / 2 for n in all_names)
     max_x = max(pos[n][0] + sizes[n][0] / 2 for n in all_names)
@@ -546,25 +540,32 @@ def _render_png_with_pillow(
     max_y = max(pos[n][1] + sizes[n][1] / 2 for n in all_names)
 
     padding = 80
-    width = int(max_x - min_x + 2 * padding)
-    height = int(max_y - min_y + 2 * padding)
+    W = int(max_x - min_x + 2 * padding)
+    H = int(max_y - min_y + 2 * padding)
 
-    def tr(pt: Tuple[float, float]) -> Tuple[float, float]:
+    def tr(pt):
         return pt[0] - min_x + padding, pt[1] - min_y + padding
 
-    img = Image.new("RGB", (width, height), "#f8fafc")
+    img  = Image.new("RGB", (W, H), "#f8fafc")
     draw = ImageDraw.Draw(img)
 
     try:
-        font_title = ImageFont.truetype("Arial.ttf", 22)
+        font_title  = ImageFont.truetype("Arial.ttf", 22)
         font_header = ImageFont.truetype("Arial.ttf", 14)
-        font_body = ImageFont.truetype("Arial.ttf", 12)
+        font_body   = ImageFont.truetype("Arial.ttf", 12)
     except Exception:
         font_title = font_header = font_body = ImageFont.load_default()
 
     draw.text((24, 12), title, fill="#0f172a", font=font_title)
 
-    all_relations: List[Tuple[str, str, Relation]] = []
+    KIND_COLOR = {
+        "inheritance": "#7c3aed",
+        "containment": "#1d4ed8",
+        "reference":   "#4b5563",
+        "instance":    "#0e9488",
+    }
+
+    all_relations = []
     for src, node in classes.items():
         for rel in node.relations:
             if rel.target in all_names:
@@ -574,11 +575,11 @@ def _render_png_with_pillow(
             if rel.target in all_names:
                 all_relations.append((src, rel.target, rel))
 
-    bundle_totals: Dict[Tuple[str, str], int] = {}
+    bundle_totals: Dict = {}
     for src, tgt, _ in all_relations:
         key = _bundle_key(src, tgt)
         bundle_totals[key] = bundle_totals.get(key, 0) + 1
-    bundle_seen: Dict[Tuple[str, str], int] = {}
+    bundle_seen: Dict = {}
 
     for src, tgt, rel in all_relations:
         sx, sy = tr(pos[src]); sw, sh = sizes[src]
@@ -589,36 +590,89 @@ def _render_png_with_pillow(
         length = math.hypot(dx, dy) or 1.0
         nx, ny = -dy / length, dx / length
         lo = _edge_lane_offset(src, tgt, bundle_totals, bundle_seen)
-        x1 += nx * lo; y1 += ny * lo; x2 += nx * lo; y2 += ny * lo
-        draw.line((x1, y1, x2, y2), fill="#4b5563", width=2)
+        x1 += nx * lo; y1 += ny * lo
+        x2 += nx * lo; y2 += ny * lo
+
+        color = KIND_COLOR.get(rel.kind, "#4b5563")
+        dash = (8, 4) if rel.kind == "instance" else None
+
+        if dash:
+            # Pillow doesn't have native dash; draw segmented
+            seg_len, gap = dash
+            total = math.hypot(x2 - x1, y2 - y1)
+            ux, uy = (x2 - x1) / total, (y2 - y1) / total
+            t = 0.0
+            drawing = True
+            while t < total:
+                t2 = min(t + (seg_len if drawing else gap), total)
+                if drawing:
+                    draw.line(
+                        (x1 + ux * t, y1 + uy * t, x1 + ux * t2, y1 + uy * t2),
+                        fill=color, width=2
+                    )
+                t = t2
+                drawing = not drawing
+        else:
+            draw.line((x1, y1, x2, y2), fill=color, width=2)
+
+        # arrowhead at target
         angle = math.atan2(y2 - y1, x2 - x1)
         ah = 10
-        draw.polygon([
-            (x2, y2),
-            (x2 - ah * math.cos(angle - math.pi/8), y2 - ah * math.sin(angle - math.pi/8)),
-            (x2 - ah * math.cos(angle + math.pi/8), y2 - ah * math.sin(angle + math.pi/8)),
-        ], fill="#4b5563")
+        if rel.kind == "inheritance":
+            # hollow triangle
+            pts = [
+                (x2, y2),
+                (x2 - ah * math.cos(angle - math.pi/7), y2 - ah * math.sin(angle - math.pi/7)),
+                (x2 - ah * math.cos(angle + math.pi/7), y2 - ah * math.sin(angle + math.pi/7)),
+            ]
+            draw.polygon(pts, fill="#ffffff", outline=color)
+        elif rel.kind == "containment":
+            # diamond at source
+            pts_d = [
+                (x1, y1),
+                (x1 - 10 * math.cos(angle - math.pi/6), y1 - 10 * math.sin(angle - math.pi/6)),
+                (x1 - 18 * math.cos(angle), y1 - 18 * math.sin(angle)),
+                (x1 - 10 * math.cos(angle + math.pi/6), y1 - 10 * math.sin(angle + math.pi/6)),
+            ]
+            draw.polygon(pts_d, fill=color)
+            pts_a = [
+                (x2, y2),
+                (x2 - ah * math.cos(angle - math.pi/8), y2 - ah * math.sin(angle - math.pi/8)),
+                (x2 - ah * math.cos(angle + math.pi/8), y2 - ah * math.sin(angle + math.pi/8)),
+            ]
+            draw.polygon(pts_a, fill=color)
+        else:
+            pts = [
+                (x2, y2),
+                (x2 - ah * math.cos(angle - math.pi/8), y2 - ah * math.sin(angle - math.pi/8)),
+                (x2 - ah * math.cos(angle + math.pi/8), y2 - ah * math.sin(angle + math.pi/8)),
+            ]
+            draw.polygon(pts, fill=color)
+
         label = rel.name + (f" {rel.multiplicity}" if rel.multiplicity else "")
-        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
-        ly = my + (lo / 18.0) * 14.0
-        lw2 = draw.textlength(label, font=font_body)
-        draw.rounded_rectangle(
-            [mx - lw2/2 - 6, ly - 10, mx + lw2/2 + 6, ly + 8],
-            radius=6, fill="#ffffff"
-        )
-        draw.text((mx - lw2/2, ly - 8), label, fill="#1f2937", font=font_body)
+        if label.strip():
+            mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+            lw2 = draw.textlength(label, font=font_body)
+            ly2 = my + (lo / 18.0) * 14.0
+            draw.rounded_rectangle(
+                [mx - lw2/2 - 6, ly2 - 10, mx + lw2/2 + 6, ly2 + 8],
+                radius=5, fill="#ffffff"
+            )
+            draw.text((mx - lw2/2, ly2 - 8), label, fill=color, font=font_body)
 
     for name, node in classes.items():
         cx, cy = tr(pos[name]); w, h = sizes[name]
         x, y = cx - w/2, cy - h/2
-        draw.rounded_rectangle((x, y, x+w, y+h), radius=10, fill="#ffffff", outline="#334155", width=2)
-        draw.rounded_rectangle((x, y, x+w, y+34), radius=10, fill="#0f766e", outline=None)
+        header_color = "#6d28d9" if node.is_abstract else "#0f766e"
+        outline = "#fb923c" if (highlight_classes and name in (highlight_classes or set())) else "#334155"
+        draw.rounded_rectangle((x, y, x+w, y+h), radius=10, fill="#ffffff", outline=outline, width=2)
+        draw.rounded_rectangle((x, y, x+w, y+34), radius=10, fill=header_color, outline=None)
         nw = draw.textlength(name, font=font_header)
         draw.text((cx - nw/2, y+10), name, fill="#ffffff", font=font_header)
         ty = y + 52
         for a, t in node.attributes:
             draw.text((x+12, ty), f"{a}: {t}", fill="#1e293b", font=font_body)
-            ty += 22
+            ty += 24
 
     for name, inst in instances.items():
         cx, cy = tr(pos[name]); w, h = sizes[name]
@@ -631,7 +685,7 @@ def _render_png_with_pillow(
         ty = y + 52
         for a, v in inst.attributes:
             draw.text((x+12, ty), f"{a} = {v}", fill="#1e293b", font=font_body)
-            ty += 22
+            ty += 24
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(output_path)
@@ -649,7 +703,7 @@ def convert_jjscript_to_image(
     if not classes and not instances:
         raise ValueError("No classes or instances parsed from JJscript input.")
 
-    out = Path(output_path)
+    out    = Path(output_path)
     suffix = out.suffix.lower()
     if suffix not in {".svg", ".png"}:
         raise ValueError("output_path must end with .svg or .png")

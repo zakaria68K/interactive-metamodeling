@@ -512,7 +512,7 @@ def start(prompt: str, sid: str, user_name: str):
 
 
 def poll(sid: str):
-    _noop = tuple(gr.update() for _ in range(13))
+    _noop = tuple(gr.update() for _ in range(14))
     if not sid or sid not in _sessions:
         return _noop
 
@@ -533,7 +533,7 @@ def poll(sid: str):
             list(sess.chat),
             gr.update(visible=False), gr.update(visible=False), gr.update(visible=False),
             gr.update(visible=False),
-            gr.update(), gr.update(), gr.update(), gr.update(),
+            gr.update(), gr.update(), gr.update(), gr.update(), gr.update(),
             gr.update(),
             gr.update(value=_to_svg(sess.final_result.get("final_metamodel", ""), "Final Metamodel")),
             gr.update(value=sess.final_result.get("final_validation", {})),
@@ -552,6 +552,7 @@ def poll(sid: str):
                 f"Chunk: {p.get('concept', '')}",
                 highlight_names=set(p.get("highlight_names", [])) if p.get("highlight_names") else None,
             )),
+            gr.update(value=p.get("chunk", "")),   # raw JjScript
             gr.update(value=_to_svg(
                 p.get("sample_model", ""),
                 f"Sample: {p.get('concept', '')}",
@@ -571,7 +572,7 @@ def poll(sid: str):
         gr.update(visible=waiting and yes_no),
         gr.update(visible=waiting and is_challenge),
         gr.update(visible=False),
-        gr.update(), gr.update(), gr.update(), gr.update(),
+        gr.update(), gr.update(), gr.update(), gr.update(), gr.update(),
         gr.update(), gr.update(), gr.update(),
         log_text,
     )
@@ -1191,6 +1192,11 @@ with gr.Blocks(title="Metamodel Generator") as demo:
                     with gr.Column():
                         gr.Markdown("##### Metamodel chunk")
                         chunk_box = gr.HTML()
+                        with gr.Accordion("📄 Raw JjScript", open=False):
+                            chunk_text_box = gr.Code(
+                                value="", language=None, interactive=False,
+                                show_label=False, lines=12,
+                            )
                     with gr.Column():
                         gr.Markdown("##### Sample instance")
                         sample_box = gr.HTML()
@@ -1324,7 +1330,7 @@ with gr.Blocks(title="Metamodel Generator") as demo:
     POLL_OUTPUTS = [
         chatbot,
         answer_row, yes_no_row, challenge_row, approval_panel,
-        concept_lbl, chunk_box, sample_box, explanation_box, validation_box,
+        concept_lbl, chunk_box, chunk_text_box, sample_box, explanation_box, validation_box,
         output_box, final_validation_box, log_box,
     ]
 
