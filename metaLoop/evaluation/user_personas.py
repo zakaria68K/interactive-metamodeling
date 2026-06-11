@@ -1,2 +1,0 @@
-# A Survey on LLM-based Conversational User Simulation: Realistic user simulators require modeling heterogeneous and partial knowledge levels rather than binary know/don’t-know behavior, improving conversational fidelity.
-# PersonaLLM: Investigating the Ability of Large Language Models to Express Personality Traits: Personality traits significantly influence dialogue behavior and response style, making trait-conditioned simulation essential for realistic user interactions.
