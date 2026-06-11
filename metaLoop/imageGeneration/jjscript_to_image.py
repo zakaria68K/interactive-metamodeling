@@ -393,27 +393,35 @@ def build_svg(
             )
 
         elif kind == "containment":
-            color = "#1d4ed8"
-            DIA = 10  # half-length of diamond
-            # diamond back at node border, tip points toward target
-            d_back_x, d_back_y = x1, y1
-            d_tip_x  = x1 + ux * DIA * 2;   d_tip_y  = y1 + uy * DIA * 2
-            d_left_x = x1 + ux * DIA - uy * DIA * 0.7
-            d_left_y = y1 + uy * DIA + ux * DIA * 0.7
-            d_right_x = x1 + ux * DIA + uy * DIA * 0.7
-            d_right_y = y1 + uy * DIA - ux * DIA * 0.7
-            # line from diamond tip to target
-            out.append(
-                f'<line x1="{d_tip_x:.2f}" y1="{d_tip_y:.2f}" '
-                f'x2="{x2:.2f}" y2="{y2:.2f}" '
-                f'stroke="{color}" stroke-width="2"/>'
-            )
-            # filled diamond (drawn on top of line)
-            out.append(
-                f'<polygon points="{d_back_x:.2f},{d_back_y:.2f} {d_left_x:.2f},{d_left_y:.2f} '
-                f'{d_tip_x:.2f},{d_tip_y:.2f} {d_right_x:.2f},{d_right_y:.2f}" '
-                f'fill="{color}" stroke="{color}" stroke-width="1"/>'
-            )
+                    color = "#1d4ed8"
+                    DIA = 10
+                    d_back_x, d_back_y = x1, y1
+                    d_tip_x  = x1 + ux * DIA * 2;  d_tip_y  = y1 + uy * DIA * 2
+                    d_left_x = x1 + ux * DIA - uy * DIA * 0.7
+                    d_left_y = y1 + uy * DIA + ux * DIA * 0.7
+                    d_right_x = x1 + ux * DIA + uy * DIA * 0.7
+                    d_right_y = y1 + uy * DIA - ux * DIA * 0.7
+                    # line from diamond tip to target
+                    out.append(
+                        f'<line x1="{d_tip_x:.2f}" y1="{d_tip_y:.2f}" '
+                        f'x2="{x2:.2f}" y2="{y2:.2f}" '
+                        f'stroke="{color}" stroke-width="2"/>'
+                    )
+                    # filled diamond at source (owner/container)
+                    out.append(
+                        f'<polygon points="{d_back_x:.2f},{d_back_y:.2f} {d_left_x:.2f},{d_left_y:.2f} '
+                        f'{d_tip_x:.2f},{d_tip_y:.2f} {d_right_x:.2f},{d_right_y:.2f}" '
+                        f'fill="{color}" stroke="{color}" stroke-width="1"/>'
+                    )
+                    # # open arrowhead at target to clarify direction
+                    # ARR = 10
+                    # lx2 = x2 - ux * ARR; ly2_e = y2 - uy * ARR
+                    # perp_x, perp_y = -uy * ARR * 0.6, ux * ARR * 0.6
+                    # out.append(
+                    #     f'<polyline points="{lx2 + perp_x:.2f},{ly2_e + perp_y:.2f} {x2:.2f},{y2:.2f} '
+                    #     f'{lx2 - perp_x:.2f},{ly2_e - perp_y:.2f}" '
+                    #     f'fill="none" stroke="{color}" stroke-width="1.8"/>'
+                    # )
 
         elif kind == "instance":
             color = "#64748b"

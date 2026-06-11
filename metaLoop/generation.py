@@ -26,12 +26,10 @@ def _filter_chunk_for_isolated_display(chunk: str, allowed_classes: list[str]) -
     lines = chunk.split("\n")
     filtered_lines = []
     
-    # Regex to match reference/containment lines
     ref_pattern = re.compile(
         r"^\s*create\s+(?:reference|containment)\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+([A-Za-z_][A-Za-z0-9_]*)\s+type\s+([A-Za-z_][A-Za-z0-9_]*)",
         re.IGNORECASE
     )
-    # Regex to match class definition blocks
     class_pattern = re.compile(r"^\s*create\s+(?:abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)", re.IGNORECASE)
     attr_pattern = re.compile(r"^\s*create\s+(?:attribute|reference|containment)\s+.+\s+in\s+([A-Za-z_][A-Za-z0-9_]*)", re.IGNORECASE)
     
@@ -39,7 +37,6 @@ def _filter_chunk_for_isolated_display(chunk: str, allowed_classes: list[str]) -
     skip_block = False
     
     for line in lines:
-        # Check if this starts a new class definition
         class_match = class_pattern.match(line)
         if class_match:
             current_class = class_match.group(1)
@@ -47,25 +44,21 @@ def _filter_chunk_for_isolated_display(chunk: str, allowed_classes: list[str]) -
             if skip_block:
                 continue
         
-        # Check if this line belongs to a class (attribute/reference definition)
         attr_match = attr_pattern.match(line)
         if attr_match:
             owner_class = attr_match.group(1)
             if owner_class not in allowed_classes:
-                continue  # Skip attributes for external classes
+                continue
         
-        # If we're skipping this class block, skip this line
         if skip_block and (class_match or attr_match):
             continue
         
-        # Check for references to external classes
         ref_match = ref_pattern.match(line)
         if ref_match:
             target_class = ref_match.group(3)
             if target_class not in allowed_classes:
                 continue
         
-        # Reset skip_block when we hit an empty line (end of class block)
         if not line.strip():
             skip_block = False
             current_class = None
@@ -106,6 +99,9 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
         issues_text = "\n".join(f"  - {i}" for i in issues)
         feedback = f"\n\nFIX THESE:\n{issues_text}\n{suggestion}\n\n"
 
+    # User feedback from rejection — collected separately from auto-validation
+    user_feedback = state.get("rejection_feedback", "").strip()
+
     prompt = (
         f"Generate JjScript metamodel for '{concept}' ONLY.\n"
         f"Define ONLY the primary '{concept}' class and its direct attributes/references.\n"
@@ -118,8 +114,11 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
         prompt += f"\nAlready defined (DO NOT REPEAT):\n{approved_text}\n\n"
     if feedback:
         prompt += feedback
-    if state.get("rejection_feedback"):
-        prompt += f"\nREJECTION FEEDBACK: {state.get('rejection_feedback')}\n\n"
+    if user_feedback:
+        prompt += (
+            f"\nUSER FEEDBACK FROM PREVIOUS REJECTION: {user_feedback}\n"
+            "You MUST explicitly address this feedback in the new chunk.\n\n"
+        )
     prompt += (
         f"Domain: {state.get('intent_summary', '')}\n"
         f"Concept: {concept}\n"
@@ -132,7 +131,6 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
     new_chunk_classes = _chunk_class_names(new_chunk)
     forbidden = [cls for cls in new_chunk_classes if cls in approved_class_names]
     if forbidden:
-        # Parse chunk into class blocks and filter out forbidden ones
         lines = new_chunk.split("\n")
         kept_blocks = []
         current_block_lines = []
@@ -142,48 +140,42 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
             class_match = re.match(r"^\s*create\s+(?:abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)", line, re.IGNORECASE)
             
             if class_match:
-                # Save previous block if it was allowed
                 if current_block_class and current_block_class not in approved_class_names:
                     kept_blocks.append("\n".join(current_block_lines))
-                
-                # Start new block
                 current_block_class = class_match.group(1)
                 current_block_lines = [line]
             elif current_block_class:
-                # We're inside a class block
                 current_block_lines.append(line)
             else:
-                # We're before any class definition
                 if line.strip():
                     kept_blocks.append(line)
         
-        # Don't forget the last block
         if current_block_class and current_block_class not in approved_class_names:
             kept_blocks.append("\n".join(current_block_lines))
         
         new_chunk = "\n\n".join(kept_blocks).strip()
     
-    # Final safety check: ensure no approved classes in final chunk
+    # Final safety check
     final_classes = _chunk_class_names(new_chunk)
     still_forbidden = [cls for cls in final_classes if cls in approved_class_names]
     if still_forbidden:
-        # Emergency: just remove all text mentioning those classes
         for cls in still_forbidden:
             new_chunk = re.sub(rf"(?m)^.*\bcreate\s+(?:abstract\s+)?class\s+{cls}\b.*$", "", new_chunk, flags=re.IGNORECASE)
         new_chunk = "\n".join(line for line in new_chunk.split("\n") if line.strip())
     
     explanation = explain_chunk(new_chunk, concept, invoke_text)
 
-    # The current_chunk is the CUMULATIVE metamodel: all approved + new
     if approved_chunks:
         cumulative = "\n\n".join([*approved_chunks, new_chunk])
     else:
         cumulative = new_chunk
+
     return {
         "current_concept": concept,
         "current_chunk": cumulative,
         "current_new_chunk": new_chunk,
         "current_chunk_explanation": explanation,
+        "rejection_feedback": "",  # clear after use
     }
 
 
@@ -195,7 +187,6 @@ def explain_chunk(chunk: str, concept: str, invoke_text: Callable[[str], str]) -
         f"Chunk:\n{chunk}"
     )
     explanation = invoke_text(prompt).strip()
-    # Keep only first two sentences if the model is verbose
     sentences = re.split(r'(?<=[.!?])\s+', explanation)
     if len(sentences) > 2:
         explanation = ' '.join(sentences[:2]).strip()
@@ -206,7 +197,6 @@ def explain_chunk(chunk: str, concept: str, invoke_text: Callable[[str], str]) -
 
 def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
     """Generate a concrete sample model (M1) in JJScript that challenges the current chunk."""
-    # Use cumulative metamodel because new concept might reference approved classes
     current_chunk = state.get("current_chunk", "")
     prev_sample = state.get("cumulative_sample_model", "")
     concept = state.get("current_concept", "")
@@ -226,10 +216,7 @@ def build_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
         f"Metamodel:\n{current_chunk}"
     )
     sample = invoke_text(prompt)
-    
-    sample_code = _clean_jjscript(sample)
-    
-    return sample_code
+    return _clean_jjscript(sample)
 
 
 def build_isolated_sample_model(state: State, invoke_text: Callable[[str], str]) -> str:
@@ -238,7 +225,6 @@ def build_isolated_sample_model(state: State, invoke_text: Callable[[str], str])
     concept = state.get("current_concept", "")
     all_classes = _chunk_class_names(current_chunk)
     
-    # Only allow classes that match the concept name
     allowed = [cls for cls in all_classes if concept.lower() in cls.lower() or cls.lower() in concept.lower()]
     if not allowed:
         allowed = all_classes[:1] if all_classes else []
@@ -257,7 +243,6 @@ def build_isolated_sample_model(state: State, invoke_text: Callable[[str], str])
         f"Chunk:\n{current_chunk}"
     )
     sample = invoke_text(prompt)
-    
     return _clean_jjscript(sample)
 
 
@@ -334,7 +319,6 @@ def build_challenge_sample_model(state: State, invoke_text: Callable[[str], str]
     )
     
     sample = invoke_text(prompt)
-    
     return _clean_jjscript(sample)
 
 
@@ -370,11 +354,9 @@ def validate_with_file_analysis(state: State, invoke_json: Callable[[str], dict]
         return {"valid": True, "issues": [], "suggestion": ""}
 
     missing_concepts = file_analysis.get("missing_concepts", [])
-
     issues = []
     if missing_concepts:
         issues.append(f"Missing concepts from file: {', '.join(missing_concepts)}")
-
     suggestion = f"Consider adding: {', '.join(missing_concepts[:3])}" if missing_concepts else ""
 
     return {
@@ -430,10 +412,10 @@ def dual_validation(
 ) -> State:
     validation_text = validator_invoke_text or invoke_text
     validation_json = validator_invoke_json or invoke_json
-    
-    # Ask user for challenge level
-    challenge_level = "moderate"  # default
-    if user_responder:
+
+    # On retry, reuse the challenge level the user already chose for this chunk
+    challenge_level = state.get("validation_challenge_level", "moderate")
+    if user_responder and not state.get("rejection_feedback"):
         challenge_question = (
             "Choose validation challenge level:\n"
             "1. Easy - Simple instances with basic attributes\n"
@@ -452,39 +434,38 @@ def dual_validation(
             challenge_level = "easy"
         elif response.lower() in ["hard", "3"]:
             challenge_level = "hard"
-    
-    # Generate challenge-based sample model
+        else:
+            challenge_level = "moderate"
+
     sample_model = build_challenge_sample_model(state, validation_text, challenge_level)
     validation = validate_chunk(state, sample_model, validation_json)
-    
-    # Check for file-based validation if file is attached
+
     updates = {
         "current_sample_model": sample_model,
         "current_validation": validation,
         "validation_challenge_level": challenge_level,
         "wants_isolated_validation": False,
     }
-    
+
     if state.get("attached_file_content"):
         file_analysis = analyze_file_content(state, validation_json)
         file_validation = validate_with_file_analysis(state, validation_json)
         selected_new_concepts = select_file_new_concepts(state, user_responder, file_analysis)
-        
-        # Merge validations
+
         merged_validation = {
             "valid": validation.get("valid", False) and file_validation.get("valid", False),
             "issues": [*validation.get("issues", []), *file_validation.get("issues", [])],
             "suggestion": f"{validation.get('suggestion', '')}\n\n{file_validation.get('suggestion', '')}".strip(),
             "challenge_validation": validation,
-            "file_validation": file_validation
+            "file_validation": file_validation,
         }
-        
+
         updates.update({
             "current_validation": merged_validation,
             "file_analysis_validation": file_analysis,
             "selected_file_new_concepts": selected_new_concepts,
         })
-    
+
     return updates
 
 
@@ -552,19 +533,16 @@ def isolated_validation_step(
         chunk_to_show = state.get("current_new_chunk", "")
         chunk_classes = _chunk_class_names(chunk_to_show)
         concept = state.get("current_concept", "")
-        
-        # For isolated view, only show classes that match the concept name
+
         primary_classes = [cls for cls in chunk_classes if concept.lower() in cls.lower() or cls.lower() in concept.lower()]
         if not primary_classes:
-            # Fallback: if no match, just use first class
             primary_classes = chunk_classes[:1] if chunk_classes else []
-        
-        # Filter chunk to only show primary classes
+
         filtered_chunk = _filter_chunk_for_isolated_display(chunk_to_show, primary_classes)
-        
+
         payload = {
             "concept": state.get("current_concept", "") + " (isolated)",
-            "chunk": filtered_chunk,   # filtered chunk showing only primary concept class
+            "chunk": filtered_chunk,
             "sample_model": isolated_sample_model,
             "validation": isolated_validation,
         }
@@ -576,35 +554,32 @@ def isolated_validation_step(
 
 
 def human_validate(state: State, human_validator: Callable[[dict], bool] | None) -> State:
-    # Show CUMULATIVE chunk and CUMULATIVE sample for full context
-    cumulative_chunk = state.get("current_chunk", "")  # All approved + new
-    new_chunk = state.get("current_new_chunk", "")     # Just this concept
+    cumulative_chunk = state.get("current_chunk", "")
+    new_chunk = state.get("current_new_chunk", "")
     chunk_classes = _chunk_class_names(cumulative_chunk)
-    
-    # Build cumulative sample (previous + new) for display
+
     new_sample = state.get("current_sample_model", "")
     prev_cumulative = state.get("cumulative_sample_model", "")
     if prev_cumulative:
         cumulative_sample_display = prev_cumulative + "\n\n" + new_sample
     else:
         cumulative_sample_display = new_sample
-    
+
     explanation = state.get("current_chunk_explanation", "") or "No explanation was generated for this chunk."
     validation = state.get("current_validation", {})
     highlight_names = _chunk_class_names(new_chunk)
     payload = {
         "concept": state.get("current_concept", ""),
-        "chunk": cumulative_chunk,              # CUMULATIVE chunk (all classes)
+        "chunk": cumulative_chunk,
         "explanation": explanation,
-        "sample_model": cumulative_sample_display,  # CUMULATIVE sample (all instances)
+        "sample_model": cumulative_sample_display,
         "validation": validation,
         "highlight_names": highlight_names,
     }
-    
-    # Add file analysis if available
+
     if state.get("file_analysis_validation"):
         payload["file_analysis"] = state["file_analysis_validation"]
-    
+
     hv_result = human_validator(payload) if human_validator else True
     approved = True
     feedback = ""
@@ -613,10 +588,9 @@ def human_validate(state: State, human_validator: Callable[[dict], bool] | None)
         feedback = str(hv_result.get("feedback", "")).strip()
     else:
         approved = bool(hv_result)
-    
-    # Still store only the NEW chunk as validated (for accumulation)
+
     validated_chunk = state.get("current_new_chunk", "")
-    
+
     result: State = {
         "human_approved": approved,
         "current_validated_chunk": validated_chunk,
@@ -640,16 +614,15 @@ def advance(state: State) -> State:
         updated_concepts = [*existing_concepts, *selected_file_new_concepts]
         next_idx = state.get("current_index", 0) + 1
         done = next_idx >= len(updated_concepts)
-        
-        # Build cumulative sample: append new sample to previous samples
+
         new_sample = state.get("current_sample_model", "")
         prev_cumulative = state.get("cumulative_sample_model", "")
-        
+
         if prev_cumulative:
             cumulative_sample = prev_cumulative + "\n\n" + new_sample
         else:
             cumulative_sample = new_sample
-        
+
         return {
             "concepts": updated_concepts,
             "approved_chunks": approved_chunks,
@@ -658,6 +631,7 @@ def advance(state: State) -> State:
             "done": done,
             "cumulative_sample_model": cumulative_sample,
             "selected_file_new_concepts": [],
+            "rejection_feedback": "",
             "final_metamodel": "\n\n".join(approved_chunks) if done else "",
         }
 
@@ -670,6 +644,7 @@ def advance(state: State) -> State:
             "concept_retry_count": 0,
             "done": done,
             "selected_file_new_concepts": [],
+            "rejection_feedback": "",
             "final_metamodel": "\n\n".join(state.get("approved_chunks", [])) if done else "",
         }
 

@@ -610,13 +610,17 @@ def begin_reject_feedback(sid: str):
         sess.pending_rejection_feedback = ""
     return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(value="")
 
-
 def submit_rejection_feedback(feedback: str, sid: str):
     if sid in _sessions:
         sess = _sessions[sid]
         reason = (feedback or "").strip()
         sess.pending_rejection_feedback = reason
         sess.approval_a.put({"approved": False, "feedback": reason})
+        # Confirm regeneration in chat
+        sess.chat.append({
+            "role": "assistant",
+            "content": f"Feedback received. Regenerating chunk with your corrections...",
+        })
     return gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), gr.update(value="")
 
 
