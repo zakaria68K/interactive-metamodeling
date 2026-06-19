@@ -25,7 +25,7 @@ class State(TypedDict):
     final_metamodel: str
     final_validation: dict
     done: bool
-    
+
     # New validation features
     validation_challenge_level: str  # "easy", "moderate", "hard"
     attached_file_content: str
@@ -35,4 +35,6 @@ class State(TypedDict):
     highlighted_concepts: dict  # {concept: [highlight_positions]}
     concept_coverage_report: dict
 
-
+    # Rejection feedback loop (previously missing from schema)
+    rejection_feedback: str
+    is_rejection_retry: bool

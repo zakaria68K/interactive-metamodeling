@@ -100,6 +100,10 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
         feedback = f"\n\nFIX THESE:\n{issues_text}\n{suggestion}\n\n"
 
     # User feedback from rejection — collected separately from auto-validation
+    # NOTE: we read this here but DO NOT clear it in this node's return value.
+    # Clearing happens centrally in advance() so that other nodes which run
+    # between generate_chunk and advance (e.g. dual_validation) can still see
+    # whether this cycle was triggered by a rejection.
     user_feedback = state.get("rejection_feedback", "").strip()
 
     prompt = (
@@ -175,7 +179,7 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
         "current_chunk": cumulative,
         "current_new_chunk": new_chunk,
         "current_chunk_explanation": explanation,
-        "rejection_feedback": "",  # clear after use
+        # rejection_feedback intentionally NOT cleared here anymore — see advance().
     }
 
 
@@ -413,9 +417,21 @@ def dual_validation(
     validation_text = validator_invoke_text or invoke_text
     validation_json = validator_invoke_json or invoke_json
 
-    # On retry, reuse the challenge level the user already chose for this chunk
+    # On retry after a rejection, reuse the challenge level the user already
+    # chose for this chunk instead of asking again.
+    #
+    # IMPORTANT: we cannot gate this on `rejection_feedback` itself, because
+    # generate_chunk (which runs immediately before this node, on every
+    # cycle) needs to read rejection_feedback to build its prompt. If
+    # generate_chunk also clears it, this node would never see it; if
+    # generate_chunk does NOT clear it, it would leak into the NEXT
+    # concept's first-ever validation and incorrectly skip the question.
+    # So we use a dedicated flag, `is_rejection_retry`, set explicitly by
+    # advance() and cleared right here once consumed.
+    is_rejection_retry = bool(state.get("is_rejection_retry", False))
+
     challenge_level = state.get("validation_challenge_level", "moderate")
-    if user_responder and not state.get("rejection_feedback"):
+    if user_responder and not is_rejection_retry:
         challenge_question = (
             "Choose validation challenge level:\n"
             "1. Easy - Simple instances with basic attributes\n"
@@ -445,6 +461,9 @@ def dual_validation(
         "current_validation": validation,
         "validation_challenge_level": challenge_level,
         "wants_isolated_validation": False,
+        # Consumed for this cycle — clear so the NEXT concept's first pass
+        # (which is not a rejection retry) correctly asks again.
+        "is_rejection_retry": False,
     }
 
     if state.get("attached_file_content"):
@@ -595,8 +614,10 @@ def human_validate(state: State, human_validator: Callable[[dict], bool] | None)
         "human_approved": approved,
         "current_validated_chunk": validated_chunk,
     }
-    if feedback:
-        result["rejection_feedback"] = feedback
+    # Always set rejection_feedback explicitly (even to "" on approval) so a
+    # stale value from a previous rejection cannot leak into a later cycle
+    # if this key is ever read before generate_chunk runs again.
+    result["rejection_feedback"] = feedback if not approved else ""
     return result
 
 
@@ -632,9 +653,15 @@ def advance(state: State) -> State:
             "cumulative_sample_model": cumulative_sample,
             "selected_file_new_concepts": [],
             "rejection_feedback": "",
+            "is_rejection_retry": False,
             "final_metamodel": "\n\n".join(approved_chunks) if done else "",
         }
 
+    # Rejected: stay on the same concept and loop back to generate_chunk.
+    # rejection_feedback is intentionally left in state here (it was just set
+    # by human_validate) so generate_chunk can read it on the next pass.
+    # is_rejection_retry tells dual_validation to skip re-asking the
+    # challenge-level question and reuse validation_challenge_level instead.
     retry_count = state.get("concept_retry_count", 0) + 1
     if retry_count >= max_retries:
         next_idx = state.get("current_index", 0) + 1
@@ -645,10 +672,15 @@ def advance(state: State) -> State:
             "done": done,
             "selected_file_new_concepts": [],
             "rejection_feedback": "",
+            "is_rejection_retry": False,
             "final_metamodel": "\n\n".join(state.get("approved_chunks", [])) if done else "",
         }
 
-    return {"concept_retry_count": retry_count, "selected_file_new_concepts": []}
+    return {
+        "concept_retry_count": retry_count,
+        "selected_file_new_concepts": [],
+        "is_rejection_retry": True,
+    }
 
 
 def router(state: State) -> str:
