@@ -186,7 +186,7 @@ def generate_chunk(state: State, invoke_text: Callable[[str], str]) -> State:
 def explain_chunk(chunk: str, concept: str, invoke_text: Callable[[str], str]) -> str:
     prompt = (
         f"Explain this generated chunk for the concept '{concept}' in exactly two short sentences. "
-        "Describe why the included classes belong in the chunk and how they support the state machine metamodel. "
+        "Describe why the included classes belong in the chunk. "
         "Do not include the prompt or any implementation details. Output only plain text.\n\n"
         f"Chunk:\n{chunk}"
     )
