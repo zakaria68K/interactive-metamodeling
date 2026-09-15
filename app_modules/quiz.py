@@ -156,15 +156,17 @@ QUIZ_QUESTIONS = [
 ]
 
 
-def _compute_form_score(responses: dict[str, str], questions: list[dict] = QUIZ_QUESTIONS) -> int:
+def _compute_form_score(responses: dict[str, object], questions: list[dict] = QUIZ_QUESTIONS) -> int:
     total = len(questions)
     if total == 0:
         return 0
 
     correct = 0
     for question in questions:
-        value = (responses.get(question["id"]) or "").strip()
-        if value and value[0].upper() == question["answer"].upper():
+        raw = responses.get(question["id"]) or []
+        selected = [raw] if isinstance(raw, str) else list(raw)
+        letters = {choice.strip()[0].upper() for choice in selected if choice.strip()}
+        if letters == {question["answer"].upper()}:
             correct += 1
 
     return round((correct / total) * 100)

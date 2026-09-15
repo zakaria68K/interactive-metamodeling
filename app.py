@@ -18,6 +18,7 @@ from metaLoop.baselineApproaches.direct_generation import generate_direct
 from app_modules.quiz import QUIZ_QUESTIONS, _compute_form_score
 from app_modules.profile import _load_user_profile, _save_user_profile
 from app_modules.svg_utils import _to_svg
+from app_modules.data_logger import log_quiz, log_session
 
 
 # ── Color palette ──────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ def _submit_pre_evaluation(name: str, *answers: str) -> tuple[str, str, object]:
         for idx, question in enumerate(QUIZ_QUESTIONS)
     }
     _save_user_profile(username, pre_data=responses)
+    log_quiz(username, "pre", responses, _compute_form_score(responses))
     status = "Pre-use evaluation saved successfully."
     return status, f"Saved pre-use questionnaire for {html.escape(username)}.", gr.update(visible=True)
 
@@ -88,6 +90,7 @@ def _submit_post_evaluation(name: str, *answers: str) -> tuple[str, str]:
         for idx, question in enumerate(QUIZ_QUESTIONS)
     }
     _save_user_profile(username, post_data=responses)
+    log_quiz(username, "post", responses, _compute_form_score(responses))
     status = "Post-use evaluation saved successfully."
     return status, f"Saved post-use questionnaire for {html.escape(username)}."
 
@@ -144,6 +147,7 @@ class _Session:
         self.all_concepts: list[str] = []
         self.extra_concepts: list[str] = []
         self.current_metamodel: str = ""
+        self.user_name: str = ""
 
 
 _sessions: dict[str, _Session] = {}
@@ -467,6 +471,8 @@ def _save_session(sess: _Session, result: dict) -> None:
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     data = {
         "timestamp": ts,
+        "method": "interactive",
+        "user": sess.user_name,
         "log": sess.log,
         "concepts": result.get("concepts", []),
         "final_metamodel": result.get("final_metamodel", ""),
@@ -474,6 +480,7 @@ def _save_session(sess: _Session, result: dict) -> None:
         "final_validation": result.get("final_validation", {}),
     }
     (out_dir / f"session_{ts}.json").write_text(json.dumps(data, indent=2))
+    log_session(data)  # also pushed off-Space; local session_logs/ alone won't survive a Space restart
 
 
 # ── Event handlers (ALL LOGIC UNCHANGED) ──────────────────────────────────────
@@ -510,6 +517,7 @@ def start(prompt: str, sid: str, user_name: str):
 
     new_sid = str(uuid.uuid4())
     sess = _Session()
+    sess.user_name = user_name
     sess.log.append(f"[{_ts()}] Started: {prompt[:80]}")
     sess.chat.append({
         "role": "assistant",
@@ -782,13 +790,15 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
     out_dir = Path("session_logs")
     out_dir.mkdir(exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    (out_dir / f"session_{ts}_oneshot.json").write_text(json.dumps({
+    oneshot_record = {
         "timestamp": ts,
         "method": "one_shot",
         "user": user_name,
         "prompt": prompt,
         "final_metamodel": metamodel,
-    }, indent=2))
+    }
+    (out_dir / f"session_{ts}_oneshot.json").write_text(json.dumps(oneshot_record, indent=2))
+    log_session(oneshot_record)  # also pushed off-Space; local session_logs/ alone won't survive a Space restart
 
     return (
         gr.update(interactive=False),   # prompt_box: keep the prompt visible, lock editing
@@ -1458,9 +1468,9 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                 for question in QUIZ_QUESTIONS:
                     gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
                     pre_question_radios.append(
-                        gr.Radio(
+                        gr.CheckboxGroup(
                             choices=question["options"],
-                            label="Choose one",
+                            label="Choose one or more",
                             type="value",
                             elem_classes="quiz-radio",
                         )
@@ -1474,9 +1484,9 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                 for question in QUIZ_QUESTIONS:
                     gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
                     post_question_radios.append(
-                        gr.Radio(
+                        gr.CheckboxGroup(
                             choices=question["options"],
-                            label="Choose one",
+                            label="Choose one or more",
                             type="value",
                             elem_classes="quiz-radio",
                         )

@@ -206,3 +206,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 metaLoop/evaluation/results/answer.md
+
+# User study runtime data (participant PII/quiz responses) — never commit
+study_data/
+user_profiles/
