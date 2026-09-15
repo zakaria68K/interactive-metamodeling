@@ -19,7 +19,12 @@ def _load_user_profile(username: str) -> dict:
     return {"username": username, "created_at": datetime.datetime.now().isoformat()}
 
 
-def _save_user_profile(name: str, pre_data: dict | None = None, post_data: dict | None = None) -> dict:
+def _save_user_profile(
+    name: str,
+    pre_data: dict | None = None,
+    post_data: dict | None = None,
+    extra: dict | None = None,
+) -> dict:
     username = (name or "").strip()
     if not username:
         raise ValueError("Username is required")
@@ -35,6 +40,8 @@ def _save_user_profile(name: str, pre_data: dict | None = None, post_data: dict 
         profile["post_responses"] = post_data
         profile["post_score"] = _compute_form_score(post_data)
         profile["post_submitted_at"] = datetime.datetime.now().isoformat()
+    if extra:
+        profile.update(extra)
 
     out_dir = Path("user_profiles")
     out_dir.mkdir(exist_ok=True)

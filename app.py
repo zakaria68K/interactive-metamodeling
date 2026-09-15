@@ -14,6 +14,7 @@ from pypdf import PdfReader
 from metaLoop.llm_client import LLMClient
 from metaLoop.metamodeling_agent import MetamodelingAgent
 from metaLoop.imageGeneration.jjscript_to_image import parse_jjscript, build_svg
+from metaLoop.baselineApproaches.direct_generation import generate_direct
 from app_modules.quiz import QUIZ_QUESTIONS, _compute_form_score
 from app_modules.profile import _load_user_profile, _save_user_profile
 from app_modules.svg_utils import _to_svg
@@ -32,12 +33,14 @@ def _show_profile_page():
         gr.update(visible=False),
         gr.update(visible=False),
         gr.update(visible=False),
+        gr.update(visible=False),
         gr.update(visible=True),
     )
 
 
 def _show_tool_page():
     return (
+        gr.update(visible=True),
         gr.update(visible=True),
         gr.update(visible=True),
         gr.update(visible=True),
@@ -492,6 +495,19 @@ def start(prompt: str, sid: str, user_name: str):
             gr.update(), gr.update(), gr.update(value="⚠️ Please save your profile in User Setup before starting."), ""
         )
 
+    if _load_user_profile(user_name).get("used_one_shot"):
+        current_chat = _sessions[sid].chat if sid and sid in _sessions else []
+        return (
+            sid,
+            list(current_chat),
+            "",
+            gr.update(visible=False), gr.update(visible=False),
+            gr.update(visible=False), gr.update(visible=False),
+            gr.update(), gr.update(),
+            gr.update(value="⚠️ This profile already used the one-shot (control) mode — the interactive tool is disabled for this study session."),
+            "",
+        )
+
     new_sid = str(uuid.uuid4())
     sess = _Session()
     sess.log.append(f"[{_ts()}] Started: {prompt[:80]}")
@@ -731,6 +747,61 @@ def confirm_add_concepts(selected: list, sid: str):
     return gr.update(choices=[], value=[]), gr.update(visible=False), msg
 
 
+# ── One-shot (control group) generation ─────────────────────────────────────────
+# This is a single blocking LLM call, not the interactive agent's background
+# thread + queue + poll loop: the control-group task in User-study.md is a
+# one-shot prompt with no iteration or dialogue, so it deliberately shares none
+# of the interactive tool's session/poll machinery. Once run, it locks the
+# interactive tool out for that profile (both in the UI and, via the
+# "used_one_shot" profile flag checked in start(), even after a page reload)
+# so a between-subjects participant can't use both conditions.
+def run_oneshot(prompt: str, file_obj, user_name: str):
+    _NOOP = tuple(gr.update() for _ in range(7))
+    prompt = (prompt or "").strip()
+    user_name = (user_name or "").strip()
+
+    if not prompt:
+        return (*_NOOP, "⚠️ Enter a domain prompt first.")
+    if not user_name:
+        return (*_NOOP, "⚠️ Please save your profile in User Setup before starting.")
+
+    profile = _load_user_profile(user_name)
+    if not profile.get("pre_responses"):
+        return (*_NOOP, "⚠️ Please complete the pre-use questionnaire in User Setup before starting the one-shot generation.")
+
+    file_content = ""
+    if file_obj:
+        try:
+            file_content, _ = _read_file(file_obj)
+        except Exception:
+            file_content = ""
+
+    metamodel = generate_direct(prompt, file_content)
+    _save_user_profile(user_name, extra={"used_one_shot": True})
+
+    out_dir = Path("session_logs")
+    out_dir.mkdir(exist_ok=True)
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    (out_dir / f"session_{ts}_oneshot.json").write_text(json.dumps({
+        "timestamp": ts,
+        "method": "one_shot",
+        "user": user_name,
+        "prompt": prompt,
+        "final_metamodel": metamodel,
+    }, indent=2))
+
+    return (
+        gr.update(interactive=False),   # prompt_box: keep the prompt visible, lock editing
+        gr.update(visible=False),       # start_btn: interactive tool is no longer reachable
+        gr.update(visible=False),       # oneshot_btn: prevent a second run
+        gr.update(interactive=False),   # file_upload
+        gr.update(visible=False),       # main_workspace (chat + review panels)
+        gr.update(value=_to_svg(metamodel, "One-Shot Metamodel")),
+        gr.update(value={}),
+        "✅ One-shot generation complete. Please go to **User Setup** and complete the **post-use questionnaire**.",
+    )
+
+
 # ── CSS ────────────────────────────────────────────────────────────────────────
 CSS = """
 /* ── Global reset ── */
@@ -738,13 +809,63 @@ body, .gradio-container {
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
     background: #f1f5f9 !important;
     color: #1e293b !important;
-    max-width: 100% !important;
+}
+/* Blocks(fill_width=True) makes the app use the full viewport width; cap it
+   so the layout doesn't stretch edge-to-edge into unreadable long lines on
+   ultra-wide monitors, while still using far more space than the default
+   centered ~1200px column. */
+.gradio-container {
     width: 100% !important;
+    max-width: 1800px !important;
+    margin: 0 auto !important;
 }
 
-.main, .wrap, .contain {
-    max-width: 100% !important;
+/* ── Group "card" backgrounds ──
+   Gradio renders a gr.Group as an outer wrapper plus an inner `.styler` div
+   that actually holds the content and collapses when the group is hidden.
+   Card chrome (background/border/padding/shadow) must live on `.styler`,
+   not on the outer wrapper class — otherwise the wrapper's own padding and
+   border stay on screen as an empty "ghost card" whenever the group's
+   content is toggled to visible=False (e.g. switching to the User Setup
+   page), and the theme's default gray gap-fill shows through any part of
+   the card with no opaque content (e.g. the <hr> divider, empty gr.HTML
+   panes). ── */
+.input-bar > .styler,
+.results-section > .styler,
+.approval-card > .styler {
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
+.input-bar > .styler { border: 1px solid #e2e8f0; padding: 12px 14px 10px; }
+.input-bar { margin-bottom: 10px; }
+.results-section > .styler { border: 1px solid #e2e8f0; overflow: hidden; }
+.results-section { margin-top: 10px; }
+.approval-card > .styler {
+    border: none;
+    border-top: 3px solid #2563eb;
+    border-radius: 0;
+    padding: 16px;
+    box-shadow: none;
+}
+.profile-page > .styler {
+    border: 1px solid #e2e8f0;
+    padding: 16px 18px;
+}
+
+/* ── Quiz radios (pre/post questionnaire) ──
+   Gradio's default Radio layout is a wrapping horizontal row, which breaks
+   full-sentence answer options into a jumbled two-column flow. Stack them
+   vertically, one option per line, for readability during a timed quiz. */
+.quiz-radio .wrap {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+}
+.quiz-radio label {
+    width: 100% !important;
+}
+.quiz-radio { margin-bottom: 14px; }
 
 /* ── App header ── */
 .app-header {
@@ -780,16 +901,6 @@ body, .gradio-container {
     margin: 0;
 }
 
-/* ── Input bar ── */
-.input-bar {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px 14px 10px;
-    margin-bottom: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-
 /* ── Shrink the Gradio file upload to a compact strip ── */
 .file-row .upload-container,
 .file-row .file-preview,
@@ -801,6 +912,13 @@ body, .gradio-container {
 .file-row .upload-container .icon-wrap { display: none !important; }
 .file-row .upload-container p { font-size: 12px !important; margin: 0 !important; line-height: 44px !important; }
 .file-row .upload-container .or { display: none !important; }
+
+/* ── User status column (next to the file upload) ── */
+.user-status-col {
+    justify-content: center;
+    gap: 2px !important;
+}
+.user-status-col p { margin: 0 !important; font-size: 13px; }
 
 /* ── Buttons ── */
 #start-btn {
@@ -818,6 +936,22 @@ body, .gradio-container {
 }
 #start-btn:hover { opacity: .88 !important; }
 
+#oneshot-btn {
+    min-height: 40px !important;
+    max-height: 44px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    padding: 0 18px !important;
+    align-self: flex-end !important;
+    border-radius: 8px !important;
+    background: #fff7ed !important;
+    color: #9a3412 !important;
+    border: 1px solid #fdba74 !important;
+    white-space: nowrap !important;
+    transition: opacity .15s !important;
+}
+#oneshot-btn:hover { opacity: .82 !important; }
+
 #cov-btn {
     min-height: 36px !important;
     max-height: 40px !important;
@@ -830,6 +964,13 @@ body, .gradio-container {
 }
 
 /* ── File status ── */
+.file-status,
+.file-row .form {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+.file-status input,
 .file-status textarea {
     font-size: 12px !important;
     color: #059669 !important;
@@ -885,12 +1026,14 @@ body, .gradio-container {
 .ws-placeholder-sub { font-size: 12px; color: #94a3b8; margin: 0; }
 
 /* ── Answer input row ── */
+#answer-box input,
 #answer-box textarea {
     border-radius: 8px !important;
     font-size: 13.5px !important;
     border: 1.5px solid #e2e8f0 !important;
     transition: border-color .15s !important;
 }
+#answer-box input:focus,
 #answer-box textarea:focus { border-color: #2563eb !important; }
 
 /* ── Yes/No and challenge buttons ── */
@@ -902,13 +1045,15 @@ body, .gradio-container {
 }
 
 /* ── Approval card ── */
-.approval-card {
-    background: #ffffff !important;
-    border: none !important;
-    border-top: 3px solid #2563eb !important;
-    border-radius: 0 !important;
-    padding: 16px !important;
+.explanation-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    color: #334155;
 }
+.explanation-box p { margin: 0; }
 .approval-card .concept-title {
     font-size: 15px;
     font-weight: 700;
@@ -1037,15 +1182,6 @@ body, .gradio-container {
     text-decoration: none;
 }
 
-/* ── Results tabs ── */
-.results-section {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    margin-top: 10px;
-    overflow: hidden;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
 
 /* ── Answer col padding ── */
 .answer-col { padding: 8px 12px 12px !important; }
@@ -1071,12 +1207,12 @@ body, .gradio-container {
 """
 
 # ── Layout ─────────────────────────────────────────────────────────────────────
-with gr.Blocks(title="Metamodel Generator") as demo:
+with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
     sid_state = gr.State("")
     user_name_state = gr.State("")
 
     # ── Header ────────────────────────────────────────────────────────────────
-    gr.HTML("""
+    main_header = gr.HTML("""
     <div class="app-header">
       <div class="app-header-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"
@@ -1095,43 +1231,56 @@ with gr.Blocks(title="Metamodel Generator") as demo:
     """)
 
     # ── Input bar ─────────────────────────────────────────────────────────────
-    with gr.Group(elem_classes="input-bar") as input_bar:
-        # Row 1: prompt + start + profile nav
-        with gr.Row(equal_height=True):
-            prompt_box = gr.Textbox(
-                placeholder="e.g. A university course management system",
-                label="Domain prompt",
-                scale=6, lines=1,
-            )
-            start_btn = gr.Button("▶ Start", variant="primary", scale=1,
-                                  min_width=100, elem_id="start-btn", size="sm")
-            profile_nav_btn = gr.Button("👤 User Setup", variant="secondary", scale=1,
-                                        min_width=130, size="sm")
-
-        gr.HTML('<hr class="input-divider">')
-
-        # Row 2: compact file upload + coverage button + status
-        with gr.Row(equal_height=True, elem_classes="file-row"):
-            file_upload = gr.File(
-                label="Attach file for coverage analysis (PDF / TXT / MD)",
-                file_types=[".pdf", ".txt", ".md"],
-                scale=6,
-                height=52,
-            )
-            with gr.Column(scale=1, min_width=140):
-                open_cov_btn = gr.Button(
-                    "Coverage Report",
-                    variant="secondary", visible=False,
-                    elem_id="cov-btn", size="sm",
+    # NOTE: the visibility toggle (User Setup <-> tool) is applied to the outer
+    # `gr.Column`, not the inner `gr.Group`. Gradio's Group component does not
+    # add a "hide" class to its own wrapper when `visible=False` — only to the
+    # Rows/Forms nested inside it — so a Group carrying its own border/padding
+    # CSS is left behind as an empty "ghost card" when hidden. A plain Column
+    # hides itself correctly, so it owns the toggle while the Group underneath
+    # (never independently toggled) keeps the seamless card styling.
+    with gr.Column() as input_bar:
+        with gr.Group(elem_classes="input-bar"):
+            # Row 1: prompt + start + profile nav
+            gr.HTML('<div class="section-label" style="padding:0 0 6px">Domain prompt</div>')
+            with gr.Row(equal_height=True):
+                prompt_box = gr.Textbox(
+                    placeholder="e.g. A university course management system",
+                    show_label=False,
+                    scale=6, lines=1,
                 )
-                file_status_lbl = gr.Textbox(
-                    value="", interactive=False, show_label=False, lines=1,
-                    placeholder="No file attached",
-                    max_lines=1, elem_classes="file-status",
-                )
+                start_btn = gr.Button("▶ Start", variant="primary", scale=1,
+                                      min_width=100, elem_id="start-btn", size="sm")
+                oneshot_btn = gr.Button("⚡ One-Shot Generation", variant="secondary", scale=1,
+                                        min_width=150, elem_id="oneshot-btn", size="sm")
+                profile_nav_btn = gr.Button("👤 User Setup", variant="secondary", scale=1,
+                                            min_width=130, size="sm")
 
-            current_user_label = gr.Markdown("**Current user:** None")
-            user_warning = gr.Markdown("", elem_id="user-warning")
+            gr.HTML('<hr class="input-divider">')
+
+            # Row 2: compact file upload + coverage button + status
+            gr.HTML('<div class="section-label" style="padding:0 0 6px">Attach file for coverage analysis (PDF / TXT / MD)</div>')
+            with gr.Row(equal_height=True, elem_classes="file-row"):
+                file_upload = gr.File(
+                    show_label=False,
+                    file_types=[".pdf", ".txt", ".md"],
+                    scale=6,
+                    height=52,
+                )
+                with gr.Column(scale=1, min_width=140):
+                    open_cov_btn = gr.Button(
+                        "Coverage Report",
+                        variant="secondary", visible=False,
+                        elem_id="cov-btn", size="sm",
+                    )
+                    file_status_lbl = gr.Textbox(
+                        value="", interactive=False, show_label=False, lines=1,
+                        placeholder="No file attached", container=False,
+                        max_lines=1, elem_classes="file-status",
+                    )
+
+                with gr.Column(scale=2, min_width=160, elem_classes="user-status-col"):
+                    current_user_label = gr.Markdown("**Current user:** None")
+                    user_warning = gr.Markdown("", elem_id="user-warning")
 
     # ── Main workspace ────────────────────────────────────────────────────────
     with gr.Row(equal_height=False) as main_workspace:
@@ -1194,63 +1343,65 @@ with gr.Blocks(title="Metamodel Generator") as demo:
             </div>
             """)
 
-            with gr.Group(visible=False, elem_classes="approval-card") as approval_panel:
-                concept_lbl = gr.Markdown("**Concept**")
-                gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0 14px">')
+            with gr.Column(visible=False) as approval_panel:
+                with gr.Group(elem_classes="approval-card"):
+                    concept_lbl = gr.Markdown("**Concept**")
+                    gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:8px 0 14px">')
 
-                with gr.Row(equal_height=True):
-                    with gr.Column():
-                        gr.Markdown("##### Metamodel chunk")
-                        chunk_box = gr.HTML()
-                        with gr.Accordion("📄 Raw JjScript", open=False):
-                            chunk_text_box = gr.Code(
-                                value="", language=None, interactive=False,
-                                show_label=False, lines=12,
-                            )
-                    with gr.Column():
-                        gr.Markdown("##### Sample instance")
-                        sample_box = gr.HTML()
-                        gr.Markdown("##### Explanation")
-                        explanation_box = gr.Textbox(value="", interactive=False, show_label=False, lines=2, elem_classes="explanation-box")
+                    with gr.Row(equal_height=True):
+                        with gr.Column():
+                            gr.Markdown("##### Metamodel chunk")
+                            chunk_box = gr.HTML()
+                            with gr.Accordion("📄 Raw JjScript", open=False):
+                                chunk_text_box = gr.Code(
+                                    value="", language=None, interactive=False,
+                                    show_label=False, lines=12,
+                                )
+                        with gr.Column():
+                            gr.Markdown("##### Sample instance")
+                            sample_box = gr.HTML()
+                            gr.Markdown("##### Explanation")
+                            explanation_box = gr.Markdown(value="", elem_classes="explanation-box")
 
-                with gr.Accordion("Auto-validation details", open=False):
-                    validation_box = gr.JSON(show_label=False)
+                    with gr.Accordion("Auto-validation details", open=False):
+                        validation_box = gr.JSON(show_label=False)
 
-                gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0 10px">')
+                    gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0 10px">')
 
-                with gr.Row():
-                    approve_btn = gr.Button("✓ Approve", variant="primary", scale=1,
-                                            elem_classes="approve-btn")
-                    reject_btn  = gr.Button("✗ Reject",  variant="stop",    scale=1,
-                                            elem_classes="reject-btn")
+                    with gr.Row():
+                        approve_btn = gr.Button("✓ Approve", variant="primary", scale=1,
+                                                elem_classes="approve-btn")
+                        reject_btn  = gr.Button("✗ Reject",  variant="stop",    scale=1,
+                                                elem_classes="reject-btn")
 
-                with gr.Group(visible=False, elem_id="reject-feedback-group") as reject_feedback_group:
-                    gr.Markdown("**What did you not like about this chunk? This feedback will help the model improve the next iteration.**")
-                    reject_reason_box = gr.Textbox(
-                        placeholder="Describe the problem so the model can improve this chunk...",
-                        lines=3, show_label=False, scale=4,
-                    )
-                    submit_rejection_feedback_btn = gr.Button(
-                        "Submit rejection feedback",
-                        variant="stop", scale=1, elem_classes="reject-feedback-btn"
-                    )
+                    with gr.Group(visible=False, elem_id="reject-feedback-group") as reject_feedback_group:
+                        gr.Markdown("**What did you not like about this chunk? This feedback will help the model improve the next iteration.**")
+                        reject_reason_box = gr.Textbox(
+                            placeholder="Describe the problem so the model can improve this chunk...",
+                            lines=3, show_label=False, scale=4,
+                        )
+                        submit_rejection_feedback_btn = gr.Button(
+                            "Submit rejection feedback",
+                            variant="stop", scale=1, elem_classes="reject-feedback-btn"
+                        )
 
     # ── Results (tabbed) ──────────────────────────────────────────────────────
-    with gr.Group(elem_classes="results-section") as results_section:
-        with gr.Tabs():
-            with gr.TabItem("📐 Final Metamodel"):
-                with gr.Row():
-                    with gr.Column(scale=7):
-                        output_box = gr.HTML(label="Final metamodel")
-                    with gr.Column(scale=3):
-                        final_validation_box = gr.JSON(label="Validation report", open=False)
+    with gr.Column() as results_section:
+        with gr.Group(elem_classes="results-section"):
+            with gr.Tabs():
+                with gr.TabItem("📐 Final Metamodel"):
+                    with gr.Row():
+                        with gr.Column(scale=7):
+                            output_box = gr.HTML(label="Final metamodel")
+                        with gr.Column(scale=3):
+                            final_validation_box = gr.JSON(label="Validation report", open=False)
 
-            with gr.TabItem("📋 Activity Log"):
-                log_box = gr.Textbox(
-                    label="", lines=14, max_lines=16, interactive=False,
-                    elem_classes="log-textarea",
-                    placeholder="Session log will appear here once started…",
-                )
+                with gr.TabItem("📋 Activity Log"):
+                    log_box = gr.Textbox(
+                        label="", lines=14, max_lines=16, interactive=False,
+                        elem_classes="log-textarea",
+                        placeholder="Session log will appear here once started…",
+                    )
 
     # ── Hidden / overlay elements ─────────────────────────────────────────────
     coverage_popup_html = gr.HTML(value="", elem_id="coverage-popup-host")
@@ -1264,71 +1415,74 @@ with gr.Blocks(title="Metamodel Generator") as demo:
 
     timer = gr.Timer(value=1.0)
 
-    with gr.Group(visible=False) as profile_page:
-        gr.HTML("""
-        <div class="app-header">
-          <div class="app-header-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="3" width="7" height="7" rx="1"/>
-              <rect x="14" y="14" width="7" height="7" rx="1"/>
-              <rect x="3" y="14" width="7" height="7" rx="1"/>
-            </svg>
-          </div>
-          <div>
-            <div class="app-header-title">User Setup</div>
-            <div class="app-header-sub">Enter your name first, then complete the pre-use questionnaire. Fill the post-use questionnaire after using the tool.</div>
-          </div>
-        </div>
-        """)
+    with gr.Column(visible=False) as profile_page:
+        with gr.Group(elem_classes="profile-page"):
+            gr.HTML("""
+            <div class="app-header">
+              <div class="app-header-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"
+                     stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/>
+                  <rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/>
+                </svg>
+              </div>
+              <div>
+                <div class="app-header-title">User Setup</div>
+                <div class="app-header-sub">Enter your name first, then complete the pre-use questionnaire. Fill the post-use questionnaire after using the tool.</div>
+              </div>
+            </div>
+            """)
 
-        gr.Markdown(
-            "Please enter your name and save it before using the tool. "
-            "Your responses are persisted to `user_profiles/` as JSON."
-        )
+            gr.Markdown(
+                "Please enter your name and save it before using the tool. "
+                "Your responses are persisted to `user_profiles/` as JSON."
+            )
 
-        username_box = gr.Textbox(
-            label="Your name",
-            placeholder="Enter your name",
-            scale=4, lines=1,
-        )
+            username_box = gr.Textbox(
+                label="Your name",
+                placeholder="Enter your name",
+                scale=4, lines=1,
+            )
 
-        with gr.Row(equal_height=True):
-            save_name_btn = gr.Button("Save name", variant="primary", scale=1, min_width=130, size="sm")
-            back_to_tool_btn = gr.Button("← Back to tool", variant="secondary", scale=1, min_width=130, size="sm")
+            with gr.Row(equal_height=True):
+                save_name_btn = gr.Button("Save name", variant="primary", scale=1, min_width=130, size="sm")
+                back_to_tool_btn = gr.Button("← Back to tool", variant="secondary", scale=1, min_width=130, size="sm")
 
-        profile_status = gr.Markdown("Your profile is not saved yet.")
+            profile_status = gr.Markdown("Your profile is not saved yet.")
 
-        pre_question_radios = []
-        with gr.Group(visible=False) as pre_form_group:
-            gr.Markdown("### Pre-use questionnaire")
-            for question in QUIZ_QUESTIONS:
-                gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
-                pre_question_radios.append(
-                    gr.Radio(
-                        choices=question["options"],
-                        label="Choose one",
-                        type="value",
+            pre_question_radios = []
+            with gr.Group(visible=False) as pre_form_group:
+                gr.Markdown("### Pre-use questionnaire")
+                for question in QUIZ_QUESTIONS:
+                    gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
+                    pre_question_radios.append(
+                        gr.Radio(
+                            choices=question["options"],
+                            label="Choose one",
+                            type="value",
+                            elem_classes="quiz-radio",
+                        )
                     )
-                )
-            submit_pre_btn = gr.Button("Submit pre-use evaluation", variant="primary", scale=1)
-            pre_form_status = gr.Markdown("")
+                submit_pre_btn = gr.Button("Submit pre-use evaluation", variant="primary", scale=1)
+                pre_form_status = gr.Markdown("")
 
-        post_question_radios = []
-        with gr.Group(visible=False) as post_form_group:
-            gr.Markdown("### Post-use questionnaire")
-            for question in QUIZ_QUESTIONS:
-                gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
-                post_question_radios.append(
-                    gr.Radio(
-                        choices=question["options"],
-                        label="Choose one",
-                        type="value",
+            post_question_radios = []
+            with gr.Group(visible=False) as post_form_group:
+                gr.Markdown("### Post-use questionnaire")
+                for question in QUIZ_QUESTIONS:
+                    gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
+                    post_question_radios.append(
+                        gr.Radio(
+                            choices=question["options"],
+                            label="Choose one",
+                            type="value",
+                            elem_classes="quiz-radio",
+                        )
                     )
-                )
-            submit_post_btn = gr.Button("Submit post-use evaluation", variant="primary", scale=1)
-            post_form_status = gr.Markdown("")
+                submit_post_btn = gr.Button("Submit post-use evaluation", variant="primary", scale=1)
+                post_form_status = gr.Markdown("")
 
     # ── Output lists ──────────────────────────────────────────────────────────
     START_OUTPUTS = [
@@ -1346,6 +1500,12 @@ with gr.Blocks(title="Metamodel Generator") as demo:
 
     # ── Wiring (ALL UNCHANGED) ─────────────────────────────────────────────────
     start_btn.click(start, [prompt_box, sid_state, user_name_state], START_OUTPUTS)
+    oneshot_btn.click(
+        run_oneshot,
+        [prompt_box, file_upload, user_name_state],
+        [prompt_box, start_btn, oneshot_btn, file_upload, main_workspace,
+         output_box, final_validation_box, user_warning],
+    )
     timer.tick(poll, [sid_state], POLL_OUTPUTS)
 
     submit_btn.click(submit_answer, [answer_box, sid_state], [answer_box, answer_row, yes_no_row])
@@ -1372,8 +1532,8 @@ with gr.Blocks(title="Metamodel Generator") as demo:
         [reject_feedback_group, approve_btn, reject_btn, reject_reason_box],
     )
 
-    profile_nav_btn.click(_show_profile_page, [], [input_bar, main_workspace, results_section, profile_page])
-    back_to_tool_btn.click(_show_tool_page, [], [input_bar, main_workspace, results_section, profile_page])
+    profile_nav_btn.click(_show_profile_page, [], [main_header, input_bar, main_workspace, results_section, profile_page])
+    back_to_tool_btn.click(_show_tool_page, [], [main_header, input_bar, main_workspace, results_section, profile_page])
     save_name_btn.click(_save_user_name,
                         [username_box],
                         [current_user_label, profile_status, user_name_state, pre_form_group, post_form_group])
@@ -1385,7 +1545,13 @@ with gr.Blocks(title="Metamodel Generator") as demo:
                           [post_form_status, profile_status])
 
 
+FONT_HEAD = """
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+"""
+
 if __name__ == "__main__":
     share = "--share" in sys.argv
     demo.launch(server_name="0.0.0.0", server_port=7860, share=share,
-               theme=gr.themes.Soft(), css=CSS)
+               theme=gr.themes.Soft(), css=CSS, head=FONT_HEAD)

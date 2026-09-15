@@ -19,10 +19,10 @@ Both groups work on the same domain: **[domain TBD, e.g., state machines]**, des
 
 ## Participants
 
-- Background: students with some exposure to MDE or software modeling
-- No prior use of MetaLoop
-- Recruited from ENSIAS
-- Target: ~30 participants per group (60 total)
+- Background: students with some exposure to MDE or software modeling.
+- No prior use of MetaLoop.
+- Recruited from ENSIAS.
+- Target: ~30 participants per group (60 total).
 
 ---
 
