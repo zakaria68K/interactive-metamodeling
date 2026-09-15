@@ -738,6 +738,12 @@ body, .gradio-container {
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
     background: #f1f5f9 !important;
     color: #1e293b !important;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.main, .wrap, .contain {
+    max-width: 100% !important;
 }
 
 /* ── App header ── */
