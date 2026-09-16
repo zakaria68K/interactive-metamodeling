@@ -930,35 +930,38 @@ body, .gradio-container {
 }
 .user-status-col p { margin: 0 !important; font-size: 13px; }
 
-/* ── Buttons ── */
-#start-btn {
-    min-height: 40px !important;
-    max-height: 44px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    padding: 0 22px !important;
-    align-self: flex-end !important;
-    border-radius: 8px !important;
-    background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
-    border: none !important;
-    box-shadow: 0 2px 6px rgba(37,99,235,0.35) !important;
-    transition: opacity .15s !important;
-}
-#start-btn:hover { opacity: .88 !important; }
+/* ── Buttons ──
+   Alignment lives on the row (align-items), not on each button
+   individually — a per-button `align-self` only fixes that one button,
+   so any sibling without the same override (as User Setup used to be)
+   drifts out of line the moment row heights aren't pixel-identical
+   (e.g. one label wrapping at a narrower viewport). All three buttons
+   also share the same height/padding/font metrics so their boxes are
+   identical regardless of label length. ── */
+.prompt-row { align-items: flex-end; }
 
-#oneshot-btn {
+#start-btn, #oneshot-btn, #profile-nav-btn {
     min-height: 40px !important;
     max-height: 44px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
     padding: 0 18px !important;
-    align-self: flex-end !important;
     border-radius: 8px !important;
+    white-space: nowrap !important;
+    transition: opacity .15s !important;
+}
+
+#start-btn {
+    background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+    border: none !important;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.35) !important;
+}
+#start-btn:hover { opacity: .88 !important; }
+
+#oneshot-btn {
     background: #fff7ed !important;
     color: #9a3412 !important;
     border: 1px solid #fdba74 !important;
-    white-space: nowrap !important;
-    transition: opacity .15s !important;
 }
 #oneshot-btn:hover { opacity: .82 !important; }
 
@@ -1252,7 +1255,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
         with gr.Group(elem_classes="input-bar"):
             # Row 1: prompt + start + profile nav
             gr.HTML('<div class="section-label" style="padding:0 0 6px">Domain prompt</div>')
-            with gr.Row(equal_height=True):
+            with gr.Row(equal_height=True, elem_classes="prompt-row"):
                 prompt_box = gr.Textbox(
                     placeholder="e.g. A university course management system",
                     show_label=False,
@@ -1261,9 +1264,9 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                 start_btn = gr.Button("▶ Start", variant="primary", scale=1,
                                       min_width=100, elem_id="start-btn", size="sm")
                 oneshot_btn = gr.Button("⚡ One-Shot Generation", variant="secondary", scale=1,
-                                        min_width=150, elem_id="oneshot-btn", size="sm")
+                                        min_width=170, elem_id="oneshot-btn", size="sm")
                 profile_nav_btn = gr.Button("👤 User Setup", variant="secondary", scale=1,
-                                            min_width=130, size="sm")
+                                            min_width=130, elem_id="profile-nav-btn", size="sm")
 
             gr.HTML('<hr class="input-divider">')
 
