@@ -17,6 +17,8 @@ env/
 
 # Study output data (mounted as a volume at runtime)
 session_logs/
+user_profiles/
+study_data/
 
 # Version control
 .git/

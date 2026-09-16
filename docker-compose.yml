@@ -1,0 +1,13 @@
+services:
+  metamodeling-ui:
+    build: .
+    image: metamodeling-ui
+    ports:
+      - "7860:7860"
+    env_file:
+      - .env
+    volumes:
+      - ./session_logs:/app/session_logs
+      - ./user_profiles:/app/user_profiles
+      - ./study_data:/app/study_data
+    restart: unless-stopped
