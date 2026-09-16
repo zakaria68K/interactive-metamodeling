@@ -1,162 +1,300 @@
 from __future__ import annotations
 
-import typing
+# Two study domains, each with a fixed domain-prompt description (so every
+# participant in that domain builds the same metamodel, per User-study.md)
+# and its own pre/post question bank. Pre and post ask different questions
+# about the same underlying metamodeling concepts, per domain.
+#
+# Every question has exactly 3 options and, within each 6-question bank,
+# correct answers are split evenly 2/2/2 across A/B/C. Questions test
+# well-established, unambiguous metamodeling principles (containment vs.
+# reference, redundant representation, opaque fields, typed references, why
+# validate against a sample instance) — never a "what's the right
+# cardinality/design here" question, since a domain can be modeled more than
+# one valid way and that isn't a fair knowledge-gain measure.
+# Each domain's underlying metamodel is capped at ~7 concepts to match the
+# tool's concept-by-concept iteration.
 
-QUIZ_QUESTIONS = [
+BP_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "In a state machine metamodel, how is the starting point of execution typically represented?",
+        "text": "In a business process metamodel, how should the relationship between an Activity and the Actor who performs it typically be modeled?",
         "options": [
-            "A. By a separate InitialState class that has no incoming transitions",
-            "B. By adding a boolean attribute like isInitial directly on the State class",
-            "C. By naming one state \"start\" — the name is enough to identify the entry point",
+            "A. As a containment reference, since the Actor only exists within that one Activity",
+            "B. As a regular (non-containment) reference, since the Actor exists independently and may perform activities in other processes too",
+            "C. As a copied attribute storing the actor's name as free text on the Activity",
         ],
         "answer": "B",
     },
     {
         "id": "q2",
-        "text": "A State has three action slots: entry, exit, and doActivity. When does the doActivity action execute?",
+        "text": "An Activity has both an attribute assignedActorName: String and a reference assignedTo: Actor meant to record the same person. What problem does this create?",
         "options": [
-            "A. Only when the state is visited for the second time",
-            "B. Once when the state is entered, then not again until the state is exited and re-entered",
-            "C. Continuously while the system remains in that state",
+            "A. It's technically impossible to have both a string attribute and a reference on the same class",
+            "B. The reference will always silently overwrite the attribute at runtime",
+            "C. Two different mechanisms represent the same fact, so they can drift out of sync and it's unclear which one a tool should trust",
         ],
         "answer": "C",
     },
     {
         "id": "q3",
-        "text": "In a metamodel, what is the difference between a containment reference and a regular reference?",
+        "text": "Process has a containment reference to its Activities. What does this guarantee?",
         "options": [
-            "A. A containment reference means the owned element cannot exist without its owner; a regular reference is a link between independent elements",
-            "B. Containment references are only used for attributes like name or description",
-            "C. There is no practical difference — both express the same relationship",
+            "A. Each Activity belongs to exactly one Process, which is responsible for its lifecycle — it cannot outlive or be shared outside its owning Process",
+            "B. Activities can be freely shared and reused across multiple different Processes",
+            "C. The Process can contain at most one Activity at a time",
         ],
         "answer": "A",
     },
     {
         "id": "q4",
-        "text": "A Transition class has both a trigger attribute of type String and a triggerEvent reference pointing to an Event class. What problem does this create?",
+        "text": "An Activity has a logic: String attribute holding free-text instructions for what it does. What's the main limitation for a tool that wants to analyze or execute the process?",
         "options": [
-            "A. It is impossible to have both a String attribute and a reference in the same class",
-            "B. Two different mechanisms represent the same concept, making it unclear which one to use and risking inconsistent models",
-            "C. The triggerEvent reference will always override the trigger attribute at runtime",
+            "A. String attributes cannot store more than one sentence of text",
+            "B. The logic is opaque — the tool can only treat it as raw text; it cannot parse, validate, or transform it",
+            "C. It forces every Activity in the process to use identical instructions",
         ],
         "answer": "B",
     },
     {
         "id": "q5",
-        "text": "Which multiplicity is correct for the states reference in StateMachine, and why?",
+        "text": "After generating each concept chunk of a metamodel, the system validates it against a sample process instance. What's the purpose?",
         "options": [
-            "A. [0..*] — a state machine may start with no states during construction",
-            "B. [1..*] — a state machine must always contain at least one state to be meaningful",
-            "C. [1..1] — a state machine has exactly one active state at any given moment",
-        ],
-        "answer": "B",
-    },
-    {
-        "id": "q6",
-        "text": "What does it mean when a Transition has no event and no guard set?",
-        "options": [
-            "A. The transition is incomplete and will be rejected by the metamodel validator",
-            "B. It fires automatically once the source state finishes its internal activity",
-            "C. It means the transition is disabled and will never fire",
-        ],
-        "answer": "B",
-    },
-    {
-        "id": "q7",
-        "text": "Why might a Guard be modeled as a separate class with an expression attribute, rather than just a String attribute directly on Transition?",
-        "options": [
-            "A. String attributes cannot hold logical expressions in most modeling frameworks",
-            "B. A separate class gives the guard its own identity, allows reuse, and makes it easier to add metadata like a name or language later",
-            "C. It is purely a visual convention — both designs behave identically",
-        ],
-        "answer": "B",
-    },
-    {
-        "id": "q8",
-        "text": "A State has a containment reference subStates pointing to other State instances. What kind of structure does this enable?",
-        "options": [
-            "A. It allows multiple state machines to share the same set of states",
-            "B. It enables hierarchical (nested) states where a state can contain other states",
-            "C. It creates a linked list of states that the machine visits in order",
-        ],
-        "answer": "B",
-    },
-    {
-        "id": "q9",
-        "text": "In a state machine metamodel, source and target on Transition are typed as State. What scenario does this prevent?",
-        "options": [
-            "A. Self-transitions where source and target are the same state",
-            "B. Transitions that connect to pseudostates like junctions or choice nodes, which are not plain State instances",
-            "C. Transitions that carry no event",
-        ],
-        "answer": "B",
-    },
-    {
-        "id": "q10",
-        "text": "A validator flags: 'redundancy between trigger attribute and triggerEvent reference.' What is the recommended fix?",
-        "options": [
-            "A. Remove the triggerEvent reference and keep only the String trigger attribute",
-            "B. Remove the String trigger attribute and keep only the triggerEvent reference to the Event class",
-            "C. Choose one representation and apply it consistently — either the attribute or the reference, not both",
+            "A. To automatically publish the process model to a production workflow engine",
+            "B. To measure how quickly the language model generated the chunk",
+            "C. To check that the metamodel generated so far can represent a realistic example, catching missing classes or attributes before moving on",
         ],
         "answer": "C",
     },
     {
-        "id": "q11",
-        "text": "What is the purpose of entry and exit actions on a State?",
+        "id": "q6",
+        "text": "SequenceFlow's source/target are typed as the abstract class FlowNode (which Activity, Event, and Gateway inherit from), not as Object. What does this typing prevent?",
         "options": [
-            "A. Entry actions execute when the state is entered regardless of which transition caused it; exit actions execute when the state is left regardless of which transition fires",
-            "B. Entry actions execute only on the first visit; exit actions execute only on the last visit before the machine terminates",
-            "C. They replace guards — entry actions check if entry is allowed, exit actions check if exit is allowed",
-        ],
-        "answer": "A",
-    },
-    {
-        "id": "q12",
-        "text": "A StateMachine uses a regular reference (not containment) to link to its State instances. What risk does this introduce?",
-        "options": [
-            "A. States could exist independently of any state machine, with no owner responsible for their lifecycle",
-            "B. The state machine would be unable to have more than one state",
-            "C. References are not supported for collections in metamodeling tools",
-        ],
-        "answer": "A",
-    },
-    {
-        "id": "q13",
-        "text": "In the metamodel, Action has a code attribute of type String. What is the main limitation of this for a tool that needs to execute or analyse the action?",
-        "options": [
-            "A. String attributes cannot store multi-line content",
-            "B. The code is opaque — the tool cannot parse, validate, or transform it without treating it as raw uninterpreted text",
-            "C. It forces every action to be written in the same programming language",
-        ],
-        "answer": "B",
-    },
-    {
-        "id": "q14",
-        "text": "A participant generates a metamodel where Guard has a relatedTransition reference back to Transition, and Transition already has a guard reference to Guard. What issue does this raise?",
-        "options": [
-            "A. A bidirectional reference between Guard and Transition can cause navigation ambiguity and should be carefully managed to avoid redundancy",
-            "B. Bidirectional references are forbidden in all metamodeling frameworks",
-            "C. There is no issue — bidirectional references are always the correct design",
-        ],
-        "answer": "A",
-    },
-    {
-        "id": "q15",
-        "text": "After generating each concept chunk, the system validates the metamodel against a sample instance. What is the purpose of this validation step?",
-        "options": [
-            "A. To check that the generated metamodel can actually represent a realistic example, catching missing classes or attributes before moving to the next concept",
-            "B. To automatically deploy the metamodel to a production environment",
-            "C. To measure how fast the language model generated the metamodel",
+            "A. Connecting a SequenceFlow to something that isn't part of the process flow at all, such as a DataObject",
+            "B. Having more than one SequenceFlow leave the same Gateway",
+            "C. An Activity from having more than one incoming SequenceFlow",
         ],
         "answer": "A",
     },
 ]
 
+BP_POST_QUESTIONS = [
+    {
+        "id": "q1",
+        "text": "If Process referenced its Activities with a plain (non-containment) reference instead of containment, what risk does this introduce?",
+        "options": [
+            "A. Activities could exist independently of any Process, with no owner responsible for their lifecycle",
+            "B. The Process would be limited to exactly one Activity",
+            "C. Plain references cannot point to more than one Activity at a time",
+        ],
+        "answer": "A",
+    },
+    {
+        "id": "q2",
+        "text": "Activity has a nextActivity reference to the following Activity, and that Activity has a previousActivity reference pointing back. What issue can this bidirectional pair introduce?",
+        "options": [
+            "A. Bidirectional references are rejected by every metamodeling tool",
+            "B. Navigation ambiguity and redundancy — both sides must be kept consistent, which is easy to get wrong",
+            "C. It makes it impossible to ever remove an Activity from the process",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q3",
+        "text": "A Gateway needs a branching rule. Why might that rule be modeled as its own Condition class with an expression attribute, rather than a plain String on Gateway?",
+        "options": [
+            "A. String attributes cannot hold logical expressions in most modeling frameworks",
+            "B. It's purely a stylistic choice with no practical difference",
+            "C. A separate class gives the condition its own identity, allows reuse, and makes it easier to attach extra metadata later",
+        ],
+        "answer": "C",
+    },
+    {
+        "id": "q4",
+        "text": "A DataObject may be produced by one Activity and later consumed by several others in the same Process. Why is this typically a reference, not containment?",
+        "options": [
+            "A. The DataObject's existence isn't tied to any single Activity — it can be shared and outlive the Activity that created it",
+            "B. References are the only relationship type Gateways are allowed to have",
+            "C. Containment references cannot be used between two Activities",
+        ],
+        "answer": "A",
+    },
+    {
+        "id": "q5",
+        "text": "Once the full process metamodel is generated, a final validation checks it against sample instances. What does this check primarily verify?",
+        "options": [
+            "A. That the model file is small enough to email",
+            "B. That the complete metamodel is internally consistent and can represent a realistic end-to-end process, not just isolated chunks",
+            "C. That every Activity has a unique color assigned for the diagram",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q6",
+        "text": "SequenceFlow has both a conditionText: String attribute and a separate guard: Condition reference, both meant to capture the same branching rule. What should be done?",
+        "options": [
+            "A. Keep both, since redundant representations make the model more robust",
+            "B. Delete the SequenceFlow class entirely",
+            "C. Choose one representation and apply it consistently — either the attribute or the reference, not both",
+        ],
+        "answer": "C",
+    },
+]
 
-def _compute_form_score(responses: dict[str, object], questions: list[dict] = QUIZ_QUESTIONS) -> int:
+ENGINE_PRE_QUESTIONS = [
+    {
+        "id": "q1",
+        "text": "How should the relationship between the ECU and a Sensor it reads from typically be modeled?",
+        "options": [
+            "A. As a containment reference, since the Sensor cannot exist without the ECU",
+            "B. As a regular (non-containment) reference, since the Sensor is a physical part of the Engine and doesn't depend on which ECU reads it",
+            "C. As a duplicated copy of the sensor's readings stored as a string on the ECU",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q2",
+        "text": "A FuelInjector has a controlLogic: String attribute holding raw controller code as text. What's the main limitation for a tool that needs to simulate or validate engine behavior?",
+        "options": [
+            "A. String attributes cannot store more than a few characters",
+            "B. It forces every FuelInjector in the engine to run identical code",
+            "C. The code is opaque — the tool can't parse, validate, or transform it without treating it as raw text",
+        ],
+        "answer": "C",
+    },
+    {
+        "id": "q3",
+        "text": "Engine has a containment reference to its Cylinders. What does this guarantee?",
+        "options": [
+            "A. Each Cylinder belongs to exactly one Engine, which owns its lifecycle — it cannot exist independently or be shared with another Engine",
+            "B. Cylinders can be freely shared across multiple different Engines",
+            "C. The Engine can contain at most one Cylinder",
+        ],
+        "answer": "A",
+    },
+    {
+        "id": "q4",
+        "text": "ECU has a monitors reference typed specifically as Sensor (not as Object). What does this prevent?",
+        "options": [
+            "A. The ECU from monitoring more than one Sensor at a time",
+            "B. The ECU from being linked to something that isn't a Sensor at all, such as a FuelInjector or unrelated component",
+            "C. Two different ECUs from monitoring the same Sensor",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q5",
+        "text": "After generating each concept chunk of the engine metamodel, the system validates it against a sample engine instance. What's the purpose?",
+        "options": [
+            "A. To automatically order replacement parts for the engine",
+            "B. To measure how fast the language model generated the chunk",
+            "C. To check that the metamodel generated so far can represent a realistic engine configuration, catching missing classes or attributes early",
+        ],
+        "answer": "C",
+    },
+    {
+        "id": "q6",
+        "text": "Cylinder has both a pistonPositionMM: Number attribute and a piston: Piston reference, where the attribute duplicates information already available through Piston. What problem does this create?",
+        "options": [
+            "A. Two different mechanisms represent overlapping information, so they can drift out of sync and it's unclear which to trust",
+            "B. It's technically impossible to have both an attribute and a reference on the same class",
+            "C. The reference will always override the attribute automatically",
+        ],
+        "answer": "A",
+    },
+]
+
+ENGINE_POST_QUESTIONS = [
+    {
+        "id": "q1",
+        "text": "If Engine referenced its Cylinders with a plain (non-containment) reference instead of containment, what risk does this introduce?",
+        "options": [
+            "A. Cylinders could exist independently of any Engine, with no owner responsible for their lifecycle",
+            "B. The Engine would be limited to exactly one Cylinder",
+            "C. Plain references cannot point to more than one Cylinder at a time",
+        ],
+        "answer": "A",
+    },
+    {
+        "id": "q2",
+        "text": "Valve has a pairedValve reference to its counterpart valve in the same cylinder, and that Valve references back. What issue can this bidirectional pair introduce?",
+        "options": [
+            "A. Bidirectional references are forbidden in all metamodeling frameworks",
+            "B. Navigation ambiguity and redundancy — both sides must be kept in sync, which is easy to get wrong",
+            "C. It makes it impossible to ever remove a Valve from the Cylinder",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q3",
+        "text": "FuelInjector needs a timing rule for when it fires. Why might that rule be modeled as its own InjectionTiming class with attributes, rather than a plain String on FuelInjector?",
+        "options": [
+            "A. String attributes cannot represent numeric timing values in most frameworks",
+            "B. It's purely a stylistic choice with no practical difference",
+            "C. A separate class gives the timing rule its own identity, allows reuse across injectors, and makes it easier to attach extra metadata later",
+        ],
+        "answer": "C",
+    },
+    {
+        "id": "q4",
+        "text": "Piston is contained in Cylinder rather than referenced. Why is containment the appropriate choice here?",
+        "options": [
+            "A. A Piston has no meaningful existence or function outside the specific Cylinder it operates in",
+            "B. References are the only relationship type Cylinders are allowed to have",
+            "C. Containment references cannot be used between two physical parts",
+        ],
+        "answer": "A",
+    },
+    {
+        "id": "q5",
+        "text": "Once the full engine metamodel is generated, a final validation checks it against sample instances. What does this check primarily verify?",
+        "options": [
+            "A. That the model file is small enough to email",
+            "B. That the complete metamodel is internally consistent and can represent a realistic, fully assembled engine, not just isolated chunks",
+            "C. That every Cylinder has a unique paint color assigned",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q6",
+        "text": "ECU has both an injectorStatusText: String attribute and an injectors: [FuelInjector] reference, both meant to describe the same injectors and their state. What should be done?",
+        "options": [
+            "A. Keep both, since redundant representations make the model more robust",
+            "B. Delete the ECU class entirely",
+            "C. Choose one representation and apply it consistently — either the attribute or the reference, not both",
+        ],
+        "answer": "C",
+    },
+]
+
+# Fixed domain-prompt text: every participant assigned to a domain builds the
+# same metamodel (User-study.md calls for "a short natural language prompt
+# provided by the researchers", not a free choice per participant).
+DOMAINS = {
+    "bp": {
+        "label": "Business Process",
+        "prompt": (
+            "A company wants to manage its order-to-cash business process: how a "
+            "customer order becomes a series of activities carried out by different "
+            "roles, using and producing documents, until the order is fulfilled."
+        ),
+        "pre": BP_PRE_QUESTIONS,
+        "post": BP_POST_QUESTIONS,
+    },
+    "engine": {
+        "label": "Car's Engine",
+        "prompt": (
+            "A car manufacturer wants to describe the internal structure of a "
+            "combustion engine: how cylinders, pistons, valves, fuel injectors, "
+            "sensors, and the control unit relate to each other."
+        ),
+        "pre": ENGINE_PRE_QUESTIONS,
+        "post": ENGINE_POST_QUESTIONS,
+    },
+}
+
+
+def _compute_form_score(responses: dict[str, object], questions: list[dict]) -> int:
     total = len(questions)
     if total == 0:
         return 0

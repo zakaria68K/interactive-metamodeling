@@ -5,8 +5,6 @@ import json
 import re
 from pathlib import Path
 
-from .quiz import _compute_form_score
-
 
 def _load_user_profile(username: str) -> dict:
     safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", username.strip())
@@ -22,9 +20,15 @@ def _load_user_profile(username: str) -> dict:
 def _save_user_profile(
     name: str,
     pre_data: dict | None = None,
+    pre_score: int | None = None,
     post_data: dict | None = None,
+    post_score: int | None = None,
     extra: dict | None = None,
 ) -> dict:
+    # Scoring isn't computed here: which question bank (and therefore which
+    # answers are correct) applies depends on the participant's study domain,
+    # which this module has no reason to know about — the caller (app.py,
+    # which does know the domain) computes the score and passes it in.
     username = (name or "").strip()
     if not username:
         raise ValueError("Username is required")
@@ -34,11 +38,11 @@ def _save_user_profile(
     profile["updated_at"] = datetime.datetime.now().isoformat()
     if pre_data is not None:
         profile["pre_responses"] = pre_data
-        profile["pre_score"] = _compute_form_score(pre_data)
+        profile["pre_score"] = pre_score
         profile["pre_submitted_at"] = datetime.datetime.now().isoformat()
     if post_data is not None:
         profile["post_responses"] = post_data
-        profile["post_score"] = _compute_form_score(post_data)
+        profile["post_score"] = post_score
         profile["post_submitted_at"] = datetime.datetime.now().isoformat()
     if extra:
         profile.update(extra)

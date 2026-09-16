@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from threading import Lock
 
-from .quiz import QUIZ_QUESTIONS
+from .quiz import DOMAINS
 
 # ── Durable off-Space data collection ───────────────────────────────────────
 # Hugging Face Spaces containers are ephemeral: anything written to local disk
@@ -27,7 +27,11 @@ DATA_DIR.mkdir(exist_ok=True)
 QUIZ_CSV_PATH = DATA_DIR / "quiz_log.csv"
 SESSION_JSONL_PATH = DATA_DIR / "session_log.jsonl"
 
-_QUIZ_FIELDNAMES = ["timestamp", "username", "phase", "score"] + [q["id"] for q in QUIZ_QUESTIONS]
+# Both domains' question banks share the same q1..q6 ids (their text/answers
+# differ), so one fixed column layout covers either — the "domain" column
+# says which bank a given row's q1..q6 refer to.
+_QUESTION_IDS = [q["id"] for q in DOMAINS["bp"]["pre"]]
+_QUIZ_FIELDNAMES = ["timestamp", "username", "domain", "phase", "score"] + _QUESTION_IDS
 
 _local_lock = Lock()
 _scheduler = None
@@ -58,20 +62,21 @@ def _write_locked(fn) -> None:
             fn()
 
 
-def log_quiz(username: str, phase: str, responses: dict, score: int) -> None:
-    """phase is 'pre' or 'post'. Appends one row per submission; never overwrites."""
+def log_quiz(username: str, domain: str, phase: str, responses: dict, score: int) -> None:
+    """phase is 'pre' or 'post'; domain is one of DOMAINS' keys. Appends one row per submission; never overwrites."""
     row = {
         "timestamp": datetime.datetime.now().isoformat(),
         "username": username,
+        "domain": domain,
         "phase": phase,
         "score": score,
     }
-    for question in QUIZ_QUESTIONS:
-        value = responses.get(question["id"], "")
+    for question_id in _QUESTION_IDS:
+        value = responses.get(question_id, "")
         # Questions allow multiple selections (a CheckboxGroup), so the raw
         # value is a list — flatten it to a readable "; "-joined cell instead
         # of writing a Python list repr into the CSV.
-        row[question["id"]] = "; ".join(value) if isinstance(value, (list, tuple)) else value
+        row[question_id] = "; ".join(value) if isinstance(value, (list, tuple)) else value
 
     def _write() -> None:
         is_new = not QUIZ_CSV_PATH.exists()

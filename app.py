@@ -15,7 +15,7 @@ from metaLoop.llm_client import LLMClient
 from metaLoop.metamodeling_agent import MetamodelingAgent
 from metaLoop.imageGeneration.jjscript_to_image import parse_jjscript, build_svg
 from metaLoop.baselineApproaches.direct_generation import generate_direct
-from app_modules.quiz import QUIZ_QUESTIONS, _compute_form_score
+from app_modules.quiz import DOMAINS, _compute_form_score
 from app_modules.profile import _load_user_profile, _save_user_profile
 from app_modules.svg_utils import _to_svg
 from app_modules.data_logger import log_quiz, log_session
@@ -39,60 +39,94 @@ def _show_profile_page():
     )
 
 
-def _show_tool_page():
+def _show_tool_page(domain: str):
+    # Once a domain is chosen, lock the domain prompt to its fixed
+    # description (User-study.md: every participant in a domain builds the
+    # same metamodel — the prompt box shouldn't be free text once that's
+    # set) instead of leaving whatever the participant last typed.
+    prompt_update = gr.update()
+    if domain in DOMAINS:
+        prompt_update = gr.update(value=DOMAINS[domain]["prompt"], interactive=False)
+
     return (
         gr.update(visible=True),
         gr.update(visible=True),
         gr.update(visible=True),
         gr.update(visible=True),
         gr.update(visible=False),
+        prompt_update,
     )
 
 
-def _save_user_name(name: str):
+def _save_user_name(name: str, domain: str):
     username = (name or "").strip()
-    if not username:
-        return "**Current user:** None", "⚠️ Name is required.", "", gr.update(visible=False), gr.update(visible=False)
+    _HIDE_ALL_FORMS = (gr.update(visible=False),) * 4
 
-    profile = _save_user_profile(username)
+    if not username:
+        return ("**Current user:** None", "⚠️ Name is required.", "", "") + _HIDE_ALL_FORMS
+    if domain not in DOMAINS:
+        return ("**Current user:** None", "⚠️ Please select a study domain first.", "", "") + _HIDE_ALL_FORMS
+
+    _save_user_profile(username, extra={"domain": domain})
     status = f"Profile saved for {html.escape(username)}. You may now complete the pre-use questionnaire."
     return (
         f"**Current user:** {html.escape(username)}",
         status,
         username,
-        gr.update(visible=True),
+        domain,
+        gr.update(visible=domain == "bp"),
+        gr.update(visible=domain == "engine"),
+        gr.update(visible=False),
         gr.update(visible=False),
     )
 
 
-def _submit_pre_evaluation(name: str, *answers: str) -> tuple[str, str, object]:
-    username = (name or "").strip()
-    if not username:
-        return "", "⚠️ Save your name first.", gr.update(visible=False)
+def _make_submit_pre(domain_key: str):
+    questions = DOMAINS[domain_key]["pre"]
 
-    responses = {
-        question["id"]: (answers[idx] if idx < len(answers) else "")
-        for idx, question in enumerate(QUIZ_QUESTIONS)
-    }
-    _save_user_profile(username, pre_data=responses)
-    log_quiz(username, "pre", responses, _compute_form_score(responses))
-    status = "Pre-use evaluation saved successfully."
-    return status, f"Saved pre-use questionnaire for {html.escape(username)}.", gr.update(visible=True)
+    def handler(name: str, *answers):
+        username = (name or "").strip()
+        if not username:
+            return "", "⚠️ Save your name first.", gr.update(visible=False)
+
+        responses = {
+            question["id"]: (answers[idx] if idx < len(answers) else [])
+            for idx, question in enumerate(questions)
+        }
+        score = _compute_form_score(responses, questions)
+        _save_user_profile(username, pre_data=responses, pre_score=score)
+        log_quiz(username, domain_key, "pre", responses, score)
+        status = "Pre-use evaluation saved successfully."
+        return status, f"Saved pre-use questionnaire for {html.escape(username)}.", gr.update(visible=True)
+
+    return handler
 
 
-def _submit_post_evaluation(name: str, *answers: str) -> tuple[str, str]:
-    username = (name or "").strip()
-    if not username:
-        return "", "⚠️ Save your name first."
+def _make_submit_post(domain_key: str):
+    questions = DOMAINS[domain_key]["post"]
 
-    responses = {
-        question["id"]: (answers[idx] if idx < len(answers) else "")
-        for idx, question in enumerate(QUIZ_QUESTIONS)
-    }
-    _save_user_profile(username, post_data=responses)
-    log_quiz(username, "post", responses, _compute_form_score(responses))
-    status = "Post-use evaluation saved successfully."
-    return status, f"Saved post-use questionnaire for {html.escape(username)}."
+    def handler(name: str, *answers):
+        username = (name or "").strip()
+        if not username:
+            return "", "⚠️ Save your name first."
+
+        responses = {
+            question["id"]: (answers[idx] if idx < len(answers) else [])
+            for idx, question in enumerate(questions)
+        }
+        score = _compute_form_score(responses, questions)
+        _save_user_profile(username, post_data=responses, post_score=score)
+        log_quiz(username, domain_key, "post", responses, score)
+        status = "Post-use evaluation saved successfully."
+        return status, f"Saved post-use questionnaire for {html.escape(username)}."
+
+    return handler
+
+
+_submit_bp_pre_evaluation = _make_submit_pre("bp")
+_submit_engine_pre_evaluation = _make_submit_pre("engine")
+_submit_bp_post_evaluation = _make_submit_post("bp")
+_submit_engine_post_evaluation = _make_submit_post("engine")
 
 
 # SVG rendering helper moved to app_modules.svg_utils._to_svg
@@ -473,6 +507,7 @@ def _save_session(sess: _Session, result: dict) -> None:
         "timestamp": ts,
         "method": "interactive",
         "user": sess.user_name,
+        "domain": _load_user_profile(sess.user_name).get("domain", "") if sess.user_name else "",
         "log": sess.log,
         "concepts": result.get("concepts", []),
         "final_metamodel": result.get("final_metamodel", ""),
@@ -794,6 +829,7 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
         "timestamp": ts,
         "method": "one_shot",
         "user": user_name,
+        "domain": profile.get("domain", ""),
         "prompt": prompt,
         "final_metamodel": metamodel,
     }
@@ -1223,6 +1259,7 @@ body, .gradio-container {
 with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
     sid_state = gr.State("")
     user_name_state = gr.State("")
+    domain_state = gr.State("")
 
     # ── Header ────────────────────────────────────────────────────────────────
     main_header = gr.HTML("""
@@ -1459,18 +1496,27 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                 scale=4, lines=1,
             )
 
+            domain_radio = gr.Radio(
+                choices=[(v["label"], k) for k, v in DOMAINS.items()],
+                label="Study domain (assigned by the researcher)",
+                elem_classes="quiz-radio",
+            )
+
             with gr.Row(equal_height=True):
                 save_name_btn = gr.Button("Save name", variant="primary", scale=1, min_width=130, size="sm")
                 back_to_tool_btn = gr.Button("← Back to tool", variant="secondary", scale=1, min_width=130, size="sm")
 
             profile_status = gr.Markdown("Your profile is not saved yet.")
 
-            pre_question_radios = []
-            with gr.Group(visible=False) as pre_form_group:
-                gr.Markdown("### Pre-use questionnaire")
-                for question in QUIZ_QUESTIONS:
+            # Two domains, each with its own pre/post question bank (see
+            # app_modules/quiz.py). Only the group matching the saved profile's
+            # domain is ever made visible — the other stays hidden throughout.
+            bp_pre_checks = []
+            with gr.Group(visible=False) as bp_pre_form_group:
+                gr.Markdown(f"### Pre-use questionnaire — {DOMAINS['bp']['label']}")
+                for question in DOMAINS["bp"]["pre"]:
                     gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
-                    pre_question_radios.append(
+                    bp_pre_checks.append(
                         gr.CheckboxGroup(
                             choices=question["options"],
                             label="Choose one or more",
@@ -1478,15 +1524,14 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                             elem_classes="quiz-radio",
                         )
                     )
-                submit_pre_btn = gr.Button("Submit pre-use evaluation", variant="primary", scale=1)
-                pre_form_status = gr.Markdown("")
+                bp_submit_pre_btn = gr.Button("Submit pre-use evaluation", variant="primary", scale=1)
 
-            post_question_radios = []
-            with gr.Group(visible=False) as post_form_group:
-                gr.Markdown("### Post-use questionnaire")
-                for question in QUIZ_QUESTIONS:
+            engine_pre_checks = []
+            with gr.Group(visible=False) as engine_pre_form_group:
+                gr.Markdown(f"### Pre-use questionnaire — {DOMAINS['engine']['label']}")
+                for question in DOMAINS["engine"]["pre"]:
                     gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
-                    post_question_radios.append(
+                    engine_pre_checks.append(
                         gr.CheckboxGroup(
                             choices=question["options"],
                             label="Choose one or more",
@@ -1494,8 +1539,41 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                             elem_classes="quiz-radio",
                         )
                     )
-                submit_post_btn = gr.Button("Submit post-use evaluation", variant="primary", scale=1)
-                post_form_status = gr.Markdown("")
+                engine_submit_pre_btn = gr.Button("Submit pre-use evaluation", variant="primary", scale=1)
+
+            pre_form_status = gr.Markdown("")
+
+            bp_post_checks = []
+            with gr.Group(visible=False) as bp_post_form_group:
+                gr.Markdown(f"### Post-use questionnaire — {DOMAINS['bp']['label']}")
+                for question in DOMAINS["bp"]["post"]:
+                    gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
+                    bp_post_checks.append(
+                        gr.CheckboxGroup(
+                            choices=question["options"],
+                            label="Choose one or more",
+                            type="value",
+                            elem_classes="quiz-radio",
+                        )
+                    )
+                bp_submit_post_btn = gr.Button("Submit post-use evaluation", variant="primary", scale=1)
+
+            engine_post_checks = []
+            with gr.Group(visible=False) as engine_post_form_group:
+                gr.Markdown(f"### Post-use questionnaire — {DOMAINS['engine']['label']}")
+                for question in DOMAINS["engine"]["post"]:
+                    gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
+                    engine_post_checks.append(
+                        gr.CheckboxGroup(
+                            choices=question["options"],
+                            label="Choose one or more",
+                            type="value",
+                            elem_classes="quiz-radio",
+                        )
+                    )
+                engine_submit_post_btn = gr.Button("Submit post-use evaluation", variant="primary", scale=1)
+
+            post_form_status = gr.Markdown("")
 
     # ── Output lists ──────────────────────────────────────────────────────────
     START_OUTPUTS = [
@@ -1546,16 +1624,24 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
     )
 
     profile_nav_btn.click(_show_profile_page, [], [main_header, input_bar, main_workspace, results_section, profile_page])
-    back_to_tool_btn.click(_show_tool_page, [], [main_header, input_bar, main_workspace, results_section, profile_page])
+    back_to_tool_btn.click(_show_tool_page, [domain_state],
+                          [main_header, input_bar, main_workspace, results_section, profile_page, prompt_box])
     save_name_btn.click(_save_user_name,
-                        [username_box],
-                        [current_user_label, profile_status, user_name_state, pre_form_group, post_form_group])
-    submit_pre_btn.click(_submit_pre_evaluation,
-                         [username_box, *pre_question_radios],
-                         [pre_form_status, profile_status, post_form_group])
-    submit_post_btn.click(_submit_post_evaluation,
-                          [username_box, *post_question_radios],
-                          [post_form_status, profile_status])
+                        [username_box, domain_radio],
+                        [current_user_label, profile_status, user_name_state, domain_state,
+                         bp_pre_form_group, engine_pre_form_group, bp_post_form_group, engine_post_form_group])
+    bp_submit_pre_btn.click(_submit_bp_pre_evaluation,
+                            [username_box, *bp_pre_checks],
+                            [pre_form_status, profile_status, bp_post_form_group])
+    engine_submit_pre_btn.click(_submit_engine_pre_evaluation,
+                                [username_box, *engine_pre_checks],
+                                [pre_form_status, profile_status, engine_post_form_group])
+    bp_submit_post_btn.click(_submit_bp_post_evaluation,
+                             [username_box, *bp_post_checks],
+                             [post_form_status, profile_status])
+    engine_submit_post_btn.click(_submit_engine_post_evaluation,
+                                 [username_box, *engine_post_checks],
+                                 [post_form_status, profile_status])
 
 
 FONT_HEAD = """
