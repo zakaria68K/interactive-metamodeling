@@ -58,19 +58,21 @@ def _show_tool_page(domain: str):
     )
 
 
-def _save_user_name(name: str, domain: str):
+def _save_user_name(name: str, domain: str, consent: bool):
     username = (name or "").strip()
     _HIDE_ALL_FORMS = (gr.update(visible=False),) * 4
 
+    if not consent:
+        return ("**Current participant:** None", "Please confirm your consent to participate before continuing.", "", "") + _HIDE_ALL_FORMS
     if not username:
-        return ("**Current user:** None", "⚠️ Name is required.", "", "") + _HIDE_ALL_FORMS
+        return ("**Current participant:** None", "Participant number is required.", "", "") + _HIDE_ALL_FORMS
     if domain not in DOMAINS:
-        return ("**Current user:** None", "⚠️ Please select a study domain first.", "", "") + _HIDE_ALL_FORMS
+        return ("**Current participant:** None", "Please select a study domain first.", "", "") + _HIDE_ALL_FORMS
 
-    _save_user_profile(username, extra={"domain": domain})
-    status = f"Profile saved for {html.escape(username)}. You may now complete the pre-use questionnaire."
+    _save_user_profile(username, extra={"domain": domain, "consent": True})
+    status = f"Profile saved for participant {html.escape(username)}. You may now complete the pre-use questionnaire."
     return (
-        f"**Current user:** {html.escape(username)}",
+        f"**Current participant:** {html.escape(username)}",
         status,
         username,
         domain,
@@ -87,7 +89,7 @@ def _make_submit_pre(domain_key: str):
     def handler(name: str, *answers):
         username = (name or "").strip()
         if not username:
-            return "", "⚠️ Save your name first.", gr.update(visible=False)
+            return "", "Save your participant number first.", gr.update(visible=False)
 
         responses = {
             question["id"]: (answers[idx] if idx < len(answers) else [])
@@ -108,7 +110,7 @@ def _make_submit_post(domain_key: str):
     def handler(name: str, *answers):
         username = (name or "").strip()
         if not username:
-            return "", "⚠️ Save your name first."
+            return "", "Save your participant number first.", gr.update(visible=False)
 
         responses = {
             question["id"]: (answers[idx] if idx < len(answers) else [])
@@ -537,7 +539,7 @@ def start(prompt: str, sid: str, user_name: str):
             "",
             gr.update(visible=False), gr.update(visible=False),
             gr.update(visible=False), gr.update(visible=False),
-            gr.update(), gr.update(), gr.update(value="⚠️ Please save your profile in User Setup before starting."), ""
+            gr.update(), gr.update(), gr.update(value="  Please save your profile in User Setup before starting."), ""
         )
 
     if _load_user_profile(user_name).get("used_one_shot"):
@@ -549,7 +551,7 @@ def start(prompt: str, sid: str, user_name: str):
             gr.update(visible=False), gr.update(visible=False),
             gr.update(visible=False), gr.update(visible=False),
             gr.update(), gr.update(),
-            gr.update(value="⚠️ This profile already used the one-shot (control) mode — the interactive tool is disabled for this study session."),
+            gr.update(value="This profile already used the one-shot (control) mode — the interactive tool is disabled for this study session."),
             "",
         )
 
@@ -807,13 +809,13 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
     user_name = (user_name or "").strip()
 
     if not prompt:
-        return (*_NOOP, "⚠️ Enter a domain prompt first.")
+        return (*_NOOP, "  Enter a domain prompt first.")
     if not user_name:
-        return (*_NOOP, "⚠️ Please save your profile in User Setup before starting.")
+        return (*_NOOP, "  Please save your profile in User Setup before starting.")
 
     profile = _load_user_profile(user_name)
     if not profile.get("pre_responses"):
-        return (*_NOOP, "⚠️ Please complete the pre-use questionnaire in User Setup before starting the one-shot generation.")
+        return (*_NOOP, "  Please complete the pre-use questionnaire in User Setup before starting the one-shot generation.")
 
     file_content = ""
     if file_obj:
@@ -1346,7 +1348,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                     )
 
                 with gr.Column(scale=2, min_width=160, elem_classes="user-status-col"):
-                    current_user_label = gr.Markdown("**Current user:** None")
+                    current_user_label = gr.Markdown("**Current participant:** None")
                     user_warning = gr.Markdown("", elem_id="user-warning")
 
     # ── Main workspace ────────────────────────────────────────────────────────
@@ -1497,19 +1499,24 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
               </div>
               <div>
                 <div class="app-header-title">User Setup</div>
-                <div class="app-header-sub">Enter your name first, then complete the pre-use questionnaire. Fill the post-use questionnaire after using the tool.</div>
+                <div class="app-header-sub">Enter your participant number first, then complete the pre-use questionnaire. Fill the post-use questionnaire after using the tool.</div>
               </div>
             </div>
             """)
 
             gr.Markdown(
-                "Please enter your name and save it before using the tool. "
-                "Your responses are persisted to `user_profiles/` as JSON."
+                "**This study is anonymous: do not enter your name.** Use a participant "
+                "number instead (you can pick any number "
+                "you like) and save it before using the tool. Your responses are identified only by that number.\n\n"
+                "All data is collected anonymously, with digital informed consent obtained "
+                "from each participant before the study begins. **You can stop "
+                "participating in this experiment at any time, for any reason, without any "
+                "consequences to you.**"
             )
 
             username_box = gr.Textbox(
-                label="Your name",
-                placeholder="Enter your name",
+                label="Participant number",
+                placeholder="e.g. 07",
                 scale=4, lines=1,
             )
 
@@ -1517,6 +1524,11 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                 choices=[(v["label"], k) for k, v in DOMAINS.items()],
                 label="Study domain (assigned by the researcher)",
                 elem_classes="quiz-radio",
+            )
+
+            consent_checkbox = gr.Checkbox(
+                label="I have read the information above and I consent to take part in this study.",
+                value=False,
             )
 
             with gr.Row(equal_height=True):
@@ -1644,7 +1656,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
     back_to_tool_btn.click(_show_tool_page, [domain_state],
                           [main_header, input_bar, main_workspace, results_section, profile_page, prompt_box])
     save_name_btn.click(_save_user_name,
-                        [username_box, domain_radio],
+                        [username_box, domain_radio, consent_checkbox],
                         [current_user_label, profile_status, user_name_state, domain_state,
                          bp_pre_form_group, engine_pre_form_group, bp_post_form_group, engine_post_form_group])
     bp_submit_pre_btn.click(_submit_bp_pre_evaluation,
