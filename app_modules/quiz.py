@@ -3,265 +3,279 @@ from __future__ import annotations
 # Two study domains, each with a fixed domain-prompt description (so every
 # participant in that domain builds the same metamodel, per User-study.md)
 # and its own pre/post question bank. Pre and post ask different questions
-# about the same underlying metamodeling concepts, per domain.
+# about the same underlying concepts, per domain.
 #
-# Every question has exactly 3 options and, within each 6-question bank,
-# correct answers are split evenly 2/2/2 across A/B/C. Questions test
-# well-established, unambiguous metamodeling principles (containment vs.
-# reference, redundant representation, opaque fields, typed references, why
-# validate against a sample instance) — never a "what's the right
-# cardinality/design here" question, since a domain can be modeled more than
-# one valid way and that isn't a fair knowledge-gain measure.
-# Each domain's underlying metamodel is capped at ~7 concepts to match the
-# tool's concept-by-concept iteration.
+# Each domain is fixed to exactly 7 target concepts (matching the tool's
+# concept-by-concept iteration). Earlier drafts of this file tried MDE-theory
+# questions (rejected: answerable by a good modeler without ever using the
+# tool), "spot the flaw in this generated class" questions (rejected: the
+# flaw is hypothetical, not guaranteed to appear in any given generation),
+# and plain "which concept means X" lookups (rejected: too easy — many of
+# these concept names are self-explanatory).
+#
+# Each 6-question bank now mixes two question shapes:
+#   - "distinguish" — what separates two similar concepts from each other
+#   - "relationship" — how one concept connects to / depends on / contains
+#     another, phrased around the fact that this only becomes clear once the
+#     metamodel is actually built concept by concept (you can't know it from
+#     the domain prompt alone)
+# Phrasing is varied within and across banks so the same template doesn't
+# repeat six times in a row. Every question still has exactly 3 options with
+# a fixed, unambiguous answer from the 7-concept map — never a design choice
+# or something specific to one session's generation — and each bank splits
+# correct answers evenly 2/2/2 across A/B/C.
 
+# Business Process — 7 concepts: Process, Activity, Actor, Event, Gateway,
+# SequenceFlow, DataObject.
 BP_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "In a business process metamodel, how should the relationship between an Activity and the Actor who performs it typically be modeled?",
+        "text": "What is the key difference between a Gateway and an Event in this process model?",
         "options": [
-            "A. As a containment reference, since the Actor only exists within that one Activity",
-            "B. As a regular (non-containment) reference, since the Actor exists independently and may perform activities in other processes too",
-            "C. As a copied attribute storing the actor's name as free text on the Activity",
+            "A. A Gateway is a decision point where the flow can branch; an Event marks a moment such as the start or end of the process",
+            "B. A Gateway produces a document; an Event assigns an Actor",
+            "C. A Gateway can only appear once per process; an Event can appear multiple times",
         ],
-        "answer": "B",
+        "answer": "A",
     },
     {
         "id": "q2",
-        "text": "An Activity has both an attribute assignedActorName: String and a reference assignedTo: Actor meant to record the same person. What problem does this create?",
+        "text": "When the tool builds the Actor concept, which existing concept does it connect Actor to, in order to say who performs which work?",
         "options": [
-            "A. It's technically impossible to have both a string attribute and a reference on the same class",
-            "B. The reference will always silently overwrite the attribute at runtime",
-            "C. Two different mechanisms represent the same fact, so they can drift out of sync and it's unclear which one a tool should trust",
-        ],
-        "answer": "C",
-    },
-    {
-        "id": "q3",
-        "text": "Process has a containment reference to its Activities. What does this guarantee?",
-        "options": [
-            "A. Each Activity belongs to exactly one Process, which is responsible for its lifecycle — it cannot outlive or be shared outside its owning Process",
-            "B. Activities can be freely shared and reused across multiple different Processes",
-            "C. The Process can contain at most one Activity at a time",
-        ],
-        "answer": "A",
-    },
-    {
-        "id": "q4",
-        "text": "An Activity has a logic: String attribute holding free-text instructions for what it does. What's the main limitation for a tool that wants to analyze or execute the process?",
-        "options": [
-            "A. String attributes cannot store more than one sentence of text",
-            "B. The logic is opaque — the tool can only treat it as raw text; it cannot parse, validate, or transform it",
-            "C. It forces every Activity in the process to use identical instructions",
+            "A. DataObject",
+            "B. Activity",
+            "C. Event",
         ],
         "answer": "B",
     },
     {
-        "id": "q5",
-        "text": "After generating each concept chunk of a metamodel, the system validates it against a sample process instance. What's the purpose?",
+        "id": "q3",
+        "text": "What is the key difference between an Activity and an Actor in this process model?",
         "options": [
-            "A. To automatically publish the process model to a production workflow engine",
-            "B. To measure how quickly the language model generated the chunk",
-            "C. To check that the metamodel generated so far can represent a realistic example, catching missing classes or attributes before moving on",
+            "A. An Activity always follows a Gateway; an Actor always precedes a SequenceFlow",
+            "B. An Activity is a document; an Actor is a decision point",
+            "C. An Activity is a task performed as part of the process; an Actor is the role or person who performs it",
         ],
         "answer": "C",
     },
     {
-        "id": "q6",
-        "text": "SequenceFlow's source/target are typed as the abstract class FlowNode (which Activity, Event, and Gateway inherit from), not as Object. What does this typing prevent?",
+        "id": "q4",
+        "text": "A SequenceFlow needs a source and a target. Which kinds of concepts can those be?",
         "options": [
-            "A. Connecting a SequenceFlow to something that isn't part of the process flow at all, such as a DataObject",
-            "B. Having more than one SequenceFlow leave the same Gateway",
-            "C. An Activity from having more than one incoming SequenceFlow",
+            "A. Activities, Events, or Gateways",
+            "B. Only Actors",
+            "C. Only DataObjects",
         ],
         "answer": "A",
+    },
+    {
+        "id": "q5",
+        "text": "What is the key difference between the Process and an Activity?",
+        "options": [
+            "A. The Process happens after every Activity; an Activity happens after the Process ends",
+            "B. The Process is the overall container for the whole model; an Activity is one task within it",
+            "C. The Process is a document; an Activity is a person",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q6",
+        "text": "Which concept sits at the top of the containment chain, owning every Activity, Event, and Gateway once they're generated?",
+        "options": [
+            "A. SequenceFlow",
+            "B. Actor",
+            "C. Process",
+        ],
+        "answer": "C",
     },
 ]
 
 BP_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "If Process referenced its Activities with a plain (non-containment) reference instead of containment, what risk does this introduce?",
+        "text": "What is the key difference between a SequenceFlow and a DataObject?",
         "options": [
-            "A. Activities could exist independently of any Process, with no owner responsible for their lifecycle",
-            "B. The Process would be limited to exactly one Activity",
-            "C. Plain references cannot point to more than one Activity at a time",
+            "A. A SequenceFlow defines the order activities happen in; a DataObject represents information passed along the way, not the order itself",
+            "B. A SequenceFlow is a role; a DataObject is a decision point",
+            "C. A SequenceFlow only appears at the start of the process; a DataObject only appears at the end",
         ],
         "answer": "A",
     },
     {
         "id": "q2",
-        "text": "Activity has a nextActivity reference to the following Activity, and that Activity has a previousActivity reference pointing back. What issue can this bidirectional pair introduce?",
+        "text": "Once a DataObject concept is generated, which other concept must already exist for the DataObject to be linked as something it's produced or consumed by?",
         "options": [
-            "A. Bidirectional references are rejected by every metamodeling tool",
-            "B. Navigation ambiguity and redundancy — both sides must be kept consistent, which is easy to get wrong",
-            "C. It makes it impossible to ever remove an Activity from the process",
+            "A. Gateway",
+            "B. Event",
+            "C. Activity",
         ],
-        "answer": "B",
+        "answer": "C",
     },
     {
         "id": "q3",
-        "text": "A Gateway needs a branching rule. Why might that rule be modeled as its own Condition class with an expression attribute, rather than a plain String on Gateway?",
+        "text": "What is the key difference between an Actor and a DataObject?",
         "options": [
-            "A. String attributes cannot hold logical expressions in most modeling frameworks",
-            "B. It's purely a stylistic choice with no practical difference",
-            "C. A separate class gives the condition its own identity, allows reuse, and makes it easier to attach extra metadata later",
+            "A. An Actor always follows a SequenceFlow; a DataObject always precedes a Gateway",
+            "B. An Actor is a decision point; a DataObject is a moment in time",
+            "C. An Actor is the role or person responsible for an Activity; a DataObject is information used or produced by an Activity",
         ],
         "answer": "C",
     },
     {
         "id": "q4",
-        "text": "A DataObject may be produced by one Activity and later consumed by several others in the same Process. Why is this typically a reference, not containment?",
+        "text": "A Gateway needs to connect to other elements to fit into the process flow. Which kinds of concepts can it connect to via SequenceFlow?",
         "options": [
-            "A. The DataObject's existence isn't tied to any single Activity — it can be shared and outlive the Activity that created it",
-            "B. References are the only relationship type Gateways are allowed to have",
-            "C. Containment references cannot be used between two Activities",
+            "A. Activities, Events, or other Gateways",
+            "B. Only DataObjects",
+            "C. Only Actors",
         ],
         "answer": "A",
     },
     {
         "id": "q5",
-        "text": "Once the full process metamodel is generated, a final validation checks it against sample instances. What does this check primarily verify?",
+        "text": "What is the key difference between the Process and a Gateway?",
         "options": [
-            "A. That the model file is small enough to email",
-            "B. That the complete metamodel is internally consistent and can represent a realistic end-to-end process, not just isolated chunks",
-            "C. That every Activity has a unique color assigned for the diagram",
+            "A. The Process happens only once; a Gateway can repeat indefinitely",
+            "B. The Process is the container for the entire model; a Gateway is just one decision point within it",
+            "C. The Process is a document; a Gateway is a role",
         ],
         "answer": "B",
     },
     {
         "id": "q6",
-        "text": "SequenceFlow has both a conditionText: String attribute and a separate guard: Condition reference, both meant to capture the same branching rule. What should be done?",
+        "text": "Which concept represents something an Activity is linked to, other than the Actor responsible for it?",
         "options": [
-            "A. Keep both, since redundant representations make the model more robust",
-            "B. Delete the SequenceFlow class entirely",
-            "C. Choose one representation and apply it consistently — either the attribute or the reference, not both",
+            "A. Gateway",
+            "B. DataObject",
+            "C. Event",
         ],
-        "answer": "C",
+        "answer": "B",
     },
 ]
 
+# Car's Engine — 7 concepts: Engine, Cylinder, Piston, Valve, Sensor,
+# FuelInjector, ECU.
 ENGINE_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "How should the relationship between the ECU and a Sensor it reads from typically be modeled?",
+        "text": "What is the key difference between a Piston and a Valve inside a Cylinder?",
         "options": [
-            "A. As a containment reference, since the Sensor cannot exist without the ECU",
-            "B. As a regular (non-containment) reference, since the Sensor is a physical part of the Engine and doesn't depend on which ECU reads it",
-            "C. As a duplicated copy of the sensor's readings stored as a string on the ECU",
+            "A. The Piston moves up and down to compress the air-fuel mixture; the Valve opens and closes to let air or exhaust gases in and out",
+            "B. The Piston reads sensor data; the Valve injects fuel",
+            "C. The Piston is controlled by the ECU only; the Valve is controlled by the FuelInjector only",
         ],
-        "answer": "B",
+        "answer": "A",
     },
     {
         "id": "q2",
-        "text": "A FuelInjector has a controlLogic: String attribute holding raw controller code as text. What's the main limitation for a tool that needs to simulate or validate engine behavior?",
+        "text": "Before a FuelInjector concept can be linked into the engine metamodel, which concept must already exist to contain it?",
         "options": [
-            "A. String attributes cannot store more than a few characters",
-            "B. It forces every FuelInjector in the engine to run identical code",
-            "C. The code is opaque — the tool can't parse, validate, or transform it without treating it as raw text",
+            "A. ECU",
+            "B. Sensor",
+            "C. Cylinder",
         ],
         "answer": "C",
     },
     {
         "id": "q3",
-        "text": "Engine has a containment reference to its Cylinders. What does this guarantee?",
+        "text": "What is the key difference between a Sensor and the ECU?",
         "options": [
-            "A. Each Cylinder belongs to exactly one Engine, which owns its lifecycle — it cannot exist independently or be shared with another Engine",
-            "B. Cylinders can be freely shared across multiple different Engines",
-            "C. The Engine can contain at most one Cylinder",
-        ],
-        "answer": "A",
-    },
-    {
-        "id": "q4",
-        "text": "ECU has a monitors reference typed specifically as Sensor (not as Object). What does this prevent?",
-        "options": [
-            "A. The ECU from monitoring more than one Sensor at a time",
-            "B. The ECU from being linked to something that isn't a Sensor at all, such as a FuelInjector or unrelated component",
-            "C. Two different ECUs from monitoring the same Sensor",
+            "A. A Sensor injects fuel; the ECU moves the Piston",
+            "B. A Sensor measures a physical quantity like temperature; the ECU reads that data and makes control decisions",
+            "C. A Sensor is contained in the FuelInjector; the ECU is contained in the Valve",
         ],
         "answer": "B",
     },
     {
-        "id": "q5",
-        "text": "After generating each concept chunk of the engine metamodel, the system validates it against a sample engine instance. What's the purpose?",
+        "id": "q4",
+        "text": "Which concepts does the ECU directly monitor or control in this engine model?",
         "options": [
-            "A. To automatically order replacement parts for the engine",
-            "B. To measure how fast the language model generated the chunk",
-            "C. To check that the metamodel generated so far can represent a realistic engine configuration, catching missing classes or attributes early",
+            "A. Sensors and FuelInjectors",
+            "B. Only the Engine itself, nothing more specific",
+            "C. Only other ECUs",
         ],
-        "answer": "C",
+        "answer": "A",
+    },
+    {
+        "id": "q5",
+        "text": "What is the key difference between a Cylinder and the Engine?",
+        "options": [
+            "A. The Engine only has one Cylinder, always",
+            "B. The Engine is the overall assembly that contains multiple Cylinders; a Cylinder is one combustion chamber within it",
+            "C. The Engine is a Sensor; a Cylinder is an ECU",
+        ],
+        "answer": "B",
     },
     {
         "id": "q6",
-        "text": "Cylinder has both a pistonPositionMM: Number attribute and a piston: Piston reference, where the attribute duplicates information already available through Piston. What problem does this create?",
+        "text": "As the metamodel is generated concept by concept, which single concept ends up being the container for the Piston, the Valve, and the FuelInjector alike?",
         "options": [
-            "A. Two different mechanisms represent overlapping information, so they can drift out of sync and it's unclear which to trust",
-            "B. It's technically impossible to have both an attribute and a reference on the same class",
-            "C. The reference will always override the attribute automatically",
+            "A. ECU",
+            "B. Sensor",
+            "C. Cylinder",
         ],
-        "answer": "A",
+        "answer": "C",
     },
 ]
 
 ENGINE_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "If Engine referenced its Cylinders with a plain (non-containment) reference instead of containment, what risk does this introduce?",
+        "text": "What is the key difference between a Valve and a Sensor?",
         "options": [
-            "A. Cylinders could exist independently of any Engine, with no owner responsible for their lifecycle",
-            "B. The Engine would be limited to exactly one Cylinder",
-            "C. Plain references cannot point to more than one Cylinder at a time",
+            "A. A Valve controls the physical flow of gases in and out of a Cylinder; a Sensor measures a condition like temperature or oxygen level",
+            "B. A Valve reads data; a Sensor sprays fuel",
+            "C. A Valve is a type of ECU; a Sensor is a type of FuelInjector",
         ],
         "answer": "A",
     },
     {
         "id": "q2",
-        "text": "Valve has a pairedValve reference to its counterpart valve in the same cylinder, and that Valve references back. What issue can this bidirectional pair introduce?",
+        "text": "Which component reads data from a Sensor in order to adjust engine behavior?",
         "options": [
-            "A. Bidirectional references are forbidden in all metamodeling frameworks",
-            "B. Navigation ambiguity and redundancy — both sides must be kept in sync, which is easy to get wrong",
-            "C. It makes it impossible to ever remove a Valve from the Cylinder",
-        ],
-        "answer": "B",
-    },
-    {
-        "id": "q3",
-        "text": "FuelInjector needs a timing rule for when it fires. Why might that rule be modeled as its own InjectionTiming class with attributes, rather than a plain String on FuelInjector?",
-        "options": [
-            "A. String attributes cannot represent numeric timing values in most frameworks",
-            "B. It's purely a stylistic choice with no practical difference",
-            "C. A separate class gives the timing rule its own identity, allows reuse across injectors, and makes it easier to attach extra metadata later",
-        ],
-        "answer": "C",
-    },
-    {
-        "id": "q4",
-        "text": "Piston is contained in Cylinder rather than referenced. Why is containment the appropriate choice here?",
-        "options": [
-            "A. A Piston has no meaningful existence or function outside the specific Cylinder it operates in",
-            "B. References are the only relationship type Cylinders are allowed to have",
-            "C. Containment references cannot be used between two physical parts",
+            "A. The ECU",
+            "B. A Valve",
+            "C. A Piston",
         ],
         "answer": "A",
     },
     {
-        "id": "q5",
-        "text": "Once the full engine metamodel is generated, a final validation checks it against sample instances. What does this check primarily verify?",
+        "id": "q3",
+        "text": "What is the key difference between the ECU and a FuelInjector?",
         "options": [
-            "A. That the model file is small enough to email",
-            "B. That the complete metamodel is internally consistent and can represent a realistic, fully assembled engine, not just isolated chunks",
-            "C. That every Cylinder has a unique paint color assigned",
+            "A. The ECU sprays fuel; the FuelInjector makes control decisions",
+            "B. The ECU decides how much fuel to deliver and when; the FuelInjector is the component that physically sprays that fuel into the Cylinder",
+            "C. The ECU and the FuelInjector are interchangeable names for the same part",
         ],
         "answer": "B",
     },
     {
-        "id": "q6",
-        "text": "ECU has both an injectorStatusText: String attribute and an injectors: [FuelInjector] reference, both meant to describe the same injectors and their state. What should be done?",
+        "id": "q4",
+        "text": "Once the Sensor concept exists in the metamodel, which concept does it need to be linked to so its readings can actually be used?",
         "options": [
-            "A. Keep both, since redundant representations make the model more robust",
-            "B. Delete the ECU class entirely",
-            "C. Choose one representation and apply it consistently — either the attribute or the reference, not both",
+            "A. Piston",
+            "B. ECU",
+            "C. Valve",
+        ],
+        "answer": "B",
+    },
+    {
+        "id": "q5",
+        "text": "What is the key difference between a Piston and a Cylinder?",
+        "options": [
+            "A. A Piston is the chamber; a Cylinder moves inside it",
+            "B. A Piston and a Cylinder are unrelated, appearing in different engines",
+            "C. A Cylinder is the chamber that houses a Piston, which moves up and down inside it",
+        ],
+        "answer": "C",
+    },
+    {
+        "id": "q6",
+        "text": "Which single concept, once generated, becomes the container that every Cylinder in the engine belongs to?",
+        "options": [
+            "A. Sensor",
+            "B. ECU",
+            "C. Engine",
         ],
         "answer": "C",
     },
@@ -269,14 +283,18 @@ ENGINE_POST_QUESTIONS = [
 
 # Fixed domain-prompt text: every participant assigned to a domain builds the
 # same metamodel (User-study.md calls for "a short natural language prompt
-# provided by the researchers", not a free choice per participant).
+# provided by the researchers", not a free choice per participant). Each
+# prompt is worded to clearly imply all 7 target concepts for that domain,
+# so the metamodel actually built has something to say about each of them.
 DOMAINS = {
     "bp": {
         "label": "Business Process",
         "prompt": (
-            "A company wants to manage its order-to-cash business process: how a "
-            "customer order becomes a series of activities carried out by different "
-            "roles, using and producing documents, until the order is fulfilled."
+            "A company wants to manage its order-to-cash business process: starting "
+            "when a customer order is received and ending when it is fulfilled, the "
+            "process runs through a sequence of activities carried out by different "
+            "roles, includes decision points where the flow can branch, and produces "
+            "or consumes documents along the way."
         ),
         "pre": BP_PRE_QUESTIONS,
         "post": BP_POST_QUESTIONS,
