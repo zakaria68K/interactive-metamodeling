@@ -458,6 +458,9 @@ def _run_agent(sess: _Session, prompt: str) -> None:
             {"attached_file_content": sess.attached_file_content}
             if sess.attached_file_content else {}
         )
+        domain = _load_user_profile(sess.user_name).get("domain", "") if sess.user_name else ""
+        if DOMAINS.get(domain, {}).get("concepts"):
+            initial_state["required_concepts"] = DOMAINS[domain]["concepts"]
         result = agent.run_iterative(
             prompt,
             human_validator=human_validator,
@@ -819,7 +822,21 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
         except Exception:
             file_content = ""
 
-    metamodel = generate_direct(prompt, file_content)
+    # Force the same concept vocabulary the pre/post questionnaire is
+    # calibrated against, so the one-shot condition is quizzable exactly
+    # like the interactive condition — unlike the interactive path this is
+    # a hard requirement in the prompt, not a nudge, since there's no
+    # elicitation round-trip here to steer it back on track.
+    required_concepts = DOMAINS.get(profile.get("domain", ""), {}).get("concepts", [])
+    generation_prompt = prompt
+    if required_concepts:
+        generation_prompt += (
+            "\n\nThe metamodel must include exactly these core concepts, named exactly "
+            "as given (do not rename, merge, split, or omit any of them): "
+            + ", ".join(required_concepts) + "."
+        )
+
+    metamodel = generate_direct(generation_prompt, file_content)
     _save_user_profile(user_name, extra={"used_one_shot": True})
 
     out_dir = Path("session_logs")

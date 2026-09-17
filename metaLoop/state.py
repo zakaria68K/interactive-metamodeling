@@ -29,6 +29,10 @@ class State(TypedDict):
     # New validation features
     validation_challenge_level: str  # "easy", "moderate", "hard"
     attached_file_content: str
+    # Study mode: names the LLM is nudged (not forced) to reuse verbatim in
+    # knowledge_elicitation/decompose_concepts, so generation lines up with
+    # the fixed pre/post questionnaire (see app_modules/quiz.py DOMAINS).
+    required_concepts: list[str]
     file_analysis_validation: dict
     selected_file_new_concepts: list[str]
     skip_isolated_validation: bool

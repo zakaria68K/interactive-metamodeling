@@ -5,7 +5,7 @@ from .state import State
 # Depending on the LLM used, the JSON can be malformed, which may cause the proposed concepts section to be skipped.
 
 
-MAX_INITIAL_CONCEPTS = 6
+MAX_INITIAL_CONCEPTS = 7
 
 
 def _normalize_yes_no(answer: str) -> str:
@@ -32,6 +32,17 @@ def knowledge_elicitation(
     ask_user: Callable[[str, dict], str] | None = None,
 ) -> State:
     intent = state.get("intent_summary", "")
+    # When set (study sessions), nudges the LLM toward the exact concept
+    # names the pre/post questionnaire is calibrated against — best-effort
+    # only, since the user can still steer proposals away via feedback below.
+    required_concepts: list[str] = state.get("required_concepts") or []
+    required_note = (
+        f"The metamodel MUST include exactly these {len(required_concepts)} core concepts, "
+        f"named exactly as given (do not rename, merge, split, or omit any of them): "
+        f"{', '.join(required_concepts)}. Only add extra concepts beyond these if the "
+        "request or the user's feedback clearly requires them.\n"
+        if required_concepts else ""
+    )
     familiar_answer = _ask_user(
         "Are you familiar with the domain concepts?: ",
         {"intent": intent, "stage": "familiarity"},
@@ -51,6 +62,7 @@ def knowledge_elicitation(
             f"Propose up to {MAX_INITIAL_CONCEPTS} core metamodel concepts using plain, everyday language -- no jargon. "
             "For each concept add a simple one-sentence explanation a non-expert can understand.\n"
             "Concept names must be singular with first letter uppercase (e.g., State, Transition).\n"
+            f"{required_note}"
             "Reply with raw JSON only with key: concepts "
             "(array of objects, each with 'name' (string) and 'description' (string)).\n\n"
             f"Request:\n{intent}"
@@ -59,6 +71,7 @@ def knowledge_elicitation(
         base_prompt = (
             f"Propose up to {MAX_INITIAL_CONCEPTS} core metamodel concepts for the request below. "
             "Concept names must be singular with first letter uppercase (e.g., State, Transition). "
+            f"{required_note}"
             "Reply with raw JSON only with key: concepts (array of strings).\n\n"
             f"Request:\n{intent}"
         )
@@ -105,6 +118,7 @@ def knowledge_elicitation(
                 "Revise the concept list based on this user feedback. "
                 "Keep plain, non-technical language and include a one-sentence description per concept. "
                 "Concept names must be singular with first letter uppercase (e.g., State, Transition). "
+                f"{required_note}"
                 "Reply with raw JSON only with key: concepts "
                 "(array of objects with 'name' and 'description').\n\n"
                 f"Request:\n{intent}\n\nCurrent concepts: {concepts}\nUser feedback: {feedback}"
@@ -113,6 +127,7 @@ def knowledge_elicitation(
             base_prompt = (
                 "Revise the concept list based on this user feedback. "
                 "Concept names must be singular with first letter uppercase (e.g., State, Transition). "
+                f"{required_note}"
                 "Reply with raw JSON only with key: concepts (array of strings).\n\n"
                 f"Request:\n{intent}\n\nCurrent concepts: {concepts}\nUser feedback: {feedback}"
             )
@@ -132,10 +147,18 @@ def decompose_concepts(state: State, invoke_json: Callable[[str], dict]) -> Stat
             "done": False,
         }
 
+    required_concepts: list[str] = state.get("required_concepts") or []
+    required_note = (
+        f"The metamodel MUST include exactly these {len(required_concepts)} core concepts, "
+        f"named exactly as given: {', '.join(required_concepts)}. Only add extra concepts "
+        "beyond these if the request clearly requires them.\n"
+        if required_concepts else ""
+    )
     parsed = invoke_json(
         f"Decompose this request into up to {MAX_INITIAL_CONCEPTS} core metamodel concepts and identify any missing "
         "essential functionalities.\n\n"
         "Concept names must be singular with first letter uppercase (e.g., State, Transition).\n"
+        f"{required_note}"
         "Reply with raw JSON ONLY, no markdown, no extra text. Keys: "
         "intent_summary (string), concepts (array of strings), added_functionalities (array of strings).\n\n"
         f"Request:\n{state.get('intent_summary', '')}"

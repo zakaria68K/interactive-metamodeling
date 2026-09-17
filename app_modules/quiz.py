@@ -296,6 +296,10 @@ DOMAINS = {
             "roles, includes decision points where the flow can branch, and produces "
             "or consumes documents along the way."
         ),
+        # Same 7 names the quiz banks above are calibrated against — passed to
+        # both generation paths (see app.py) so what gets built actually
+        # matches what the questionnaire asks about.
+        "concepts": ["Process", "Activity", "Actor", "Event", "Gateway", "SequenceFlow", "DataObject"],
         "pre": BP_PRE_QUESTIONS,
         "post": BP_POST_QUESTIONS,
     },
@@ -306,6 +310,7 @@ DOMAINS = {
             "combustion engine: how cylinders, pistons, valves, fuel injectors, "
             "sensors, and the control unit relate to each other."
         ),
+        "concepts": ["Engine", "Cylinder", "Piston", "Valve", "Sensor", "FuelInjector", "ECU"],
         "pre": ENGINE_PRE_QUESTIONS,
         "post": ENGINE_POST_QUESTIONS,
     },
