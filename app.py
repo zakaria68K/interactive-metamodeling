@@ -29,24 +29,36 @@ _COLORS = [
 ]
 
 
-def _show_profile_page():
+def _show_profile_page(username: str):
+    # The post-use questionnaire for a domain only ever appears once that
+    # participant's profile shows they've actually completed a run (see
+    # "tool_completed", set by _save_session and run_oneshot) — never right
+    # after submitting the pre-use questionnaire, and never for the domain
+    # they aren't assigned to. Once it does appear, the pre-use form for
+    # that domain is hidden — only one of the two is ever shown at a time.
+    profile = _load_user_profile(username) if (username or "").strip() else {}
+    domain = profile.get("domain", "")
+    tool_completed = bool(profile.get("tool_completed"))
     return (
         gr.update(visible=False),
         gr.update(visible=False),
         gr.update(visible=False),
         gr.update(visible=False),
         gr.update(visible=True),
+        gr.update(visible=domain == "bp" and not tool_completed),
+        gr.update(visible=domain == "engine" and not tool_completed),
+        gr.update(visible=domain == "bp" and tool_completed),
+        gr.update(visible=domain == "engine" and tool_completed),
     )
 
 
 def _show_tool_page(domain: str):
-    # Once a domain is chosen, lock the domain prompt to its fixed
-    # description (User-study.md: every participant in a domain builds the
-    # same metamodel — the prompt box shouldn't be free text once that's
-    # set) instead of leaving whatever the participant last typed.
+    # Pre-fill the domain prompt with its fixed description (User-study.md:
+    # every participant in a domain builds the same metamodel) but leave it
+    # editable — the participant can tweak it if they want to.
     prompt_update = gr.update()
     if domain in DOMAINS:
-        prompt_update = gr.update(value=DOMAINS[domain]["prompt"], interactive=False)
+        prompt_update = gr.update(value=DOMAINS[domain]["prompt"], interactive=True)
 
     return (
         gr.update(visible=True),
@@ -63,11 +75,11 @@ def _save_user_name(name: str, domain: str, consent: bool):
     _HIDE_ALL_FORMS = (gr.update(visible=False),) * 4
 
     if not consent:
-        return ("**Current participant:** None", "Please confirm your consent to participate before continuing.", "", "") + _HIDE_ALL_FORMS
+        return ("**Current participant:** None", "⚠️ Please confirm your consent to participate before continuing.", "", "") + _HIDE_ALL_FORMS
     if not username:
-        return ("**Current participant:** None", "Participant number is required.", "", "") + _HIDE_ALL_FORMS
+        return ("**Current participant:** None", "⚠️ Participant ID is required.", "", "") + _HIDE_ALL_FORMS
     if domain not in DOMAINS:
-        return ("**Current participant:** None", "Please select a study domain first.", "", "") + _HIDE_ALL_FORMS
+        return ("**Current participant:** None", "⚠️ Please select a study domain first.", "", "") + _HIDE_ALL_FORMS
 
     _save_user_profile(username, extra={"domain": domain, "consent": True})
     status = f"Profile saved for participant {html.escape(username)}. You may now complete the pre-use questionnaire."
@@ -89,7 +101,7 @@ def _make_submit_pre(domain_key: str):
     def handler(name: str, *answers):
         username = (name or "").strip()
         if not username:
-            return "", "Save your participant number first.", gr.update(visible=False)
+            return "", "⚠️ Save your participant ID first.", gr.update(visible=False)
 
         responses = {
             question["id"]: (answers[idx] if idx < len(answers) else [])
@@ -99,7 +111,9 @@ def _make_submit_pre(domain_key: str):
         _save_user_profile(username, pre_data=responses, pre_score=score)
         log_quiz(username, domain_key, "pre", responses, score)
         status = "Pre-use evaluation saved successfully."
-        return status, f"Saved pre-use questionnaire for {html.escape(username)}.", gr.update(visible=True)
+        # The post-use questionnaire stays hidden here — it only appears once
+        # the participant has actually used the tool (see _show_profile_page).
+        return status, f"Saved pre-use questionnaire for {html.escape(username)}.", gr.update()
 
     return handler
 
@@ -110,7 +124,7 @@ def _make_submit_post(domain_key: str):
     def handler(name: str, *answers):
         username = (name or "").strip()
         if not username:
-            return "", "Save your participant number first.", gr.update(visible=False)
+            return "", "⚠️ Save your participant ID first."
 
         responses = {
             question["id"]: (answers[idx] if idx < len(answers) else [])
@@ -521,6 +535,8 @@ def _save_session(sess: _Session, result: dict) -> None:
     }
     (out_dir / f"session_{ts}.json").write_text(json.dumps(data, indent=2))
     log_session(data)  # also pushed off-Space; local session_logs/ alone won't survive a Space restart
+    if sess.user_name:
+        _save_user_profile(sess.user_name, extra={"tool_completed": True})
 
 
 # ── Event handlers (ALL LOGIC UNCHANGED) ──────────────────────────────────────
@@ -539,7 +555,7 @@ def start(prompt: str, sid: str, user_name: str):
             "",
             gr.update(visible=False), gr.update(visible=False),
             gr.update(visible=False), gr.update(visible=False),
-            gr.update(), gr.update(), gr.update(value="  Please save your profile in User Setup before starting."), ""
+            gr.update(), gr.update(), gr.update(value="⚠️ Please save your profile in User Setup before starting."), ""
         )
 
     if _load_user_profile(user_name).get("used_one_shot"):
@@ -551,7 +567,7 @@ def start(prompt: str, sid: str, user_name: str):
             gr.update(visible=False), gr.update(visible=False),
             gr.update(visible=False), gr.update(visible=False),
             gr.update(), gr.update(),
-            gr.update(value="This profile already used the one-shot (control) mode — the interactive tool is disabled for this study session."),
+            gr.update(value="⚠️ This profile already used the one-shot (control) mode — the interactive tool is disabled for this study session."),
             "",
         )
 
@@ -567,6 +583,15 @@ def start(prompt: str, sid: str, user_name: str):
         ),
     })
     _sessions[new_sid] = sess
+    # Mark the profile as having used the tool as soon as an interactive
+    # session actually launches, rather than waiting for the full
+    # concept-by-concept graph to run to completion — that graph only
+    # finishes once every chunk has been approved through to the end, which
+    # a participant may reasonably stop short of after genuinely using the
+    # tool for a while. Gating post-quiz visibility on that full completion
+    # left it unreachable in practice; gating on "started a session" is what
+    # "used the tool" means for the study's between-subjects design.
+    _save_user_profile(user_name, extra={"tool_completed": True})
     threading.Thread(target=_run_agent, args=(sess, prompt), daemon=True).start()
 
     return (new_sid, list(sess.chat), "",
@@ -576,7 +601,7 @@ def start(prompt: str, sid: str, user_name: str):
 
 
 def poll(sid: str):
-    _noop = tuple(gr.update() for _ in range(14))
+    _noop = tuple(gr.update() for _ in range(15))
     if not sid or sid not in _sessions:
         return _noop
 
@@ -600,6 +625,7 @@ def poll(sid: str):
             gr.update(), gr.update(), gr.update(), gr.update(), gr.update(),
             gr.update(),
             gr.update(value=_to_svg(sess.final_result.get("final_metamodel", ""), "Final Metamodel")),
+            gr.update(value=sess.final_result.get("final_metamodel", "")),   # raw JjScript
             gr.update(value=sess.final_result.get("final_validation", {})),
             log_text,
         )
@@ -625,6 +651,7 @@ def poll(sid: str):
             gr.update(value=p.get("validation", {})),
             gr.update(),
             gr.update(),
+            gr.update(),
             log_text,
         )
     yes_no       = _is_yes_no_question(sess.current_elicitation_question)
@@ -637,7 +664,7 @@ def poll(sid: str):
         gr.update(visible=waiting and is_challenge),
         gr.update(visible=False),
         gr.update(), gr.update(), gr.update(), gr.update(), gr.update(),
-        gr.update(), gr.update(), gr.update(),
+        gr.update(), gr.update(), gr.update(), gr.update(),
         log_text,
     )
 
@@ -804,18 +831,18 @@ def confirm_add_concepts(selected: list, sid: str):
 # "used_one_shot" profile flag checked in start(), even after a page reload)
 # so a between-subjects participant can't use both conditions.
 def run_oneshot(prompt: str, file_obj, user_name: str):
-    _NOOP = tuple(gr.update() for _ in range(7))
+    _NOOP = tuple(gr.update() for _ in range(8))
     prompt = (prompt or "").strip()
     user_name = (user_name or "").strip()
 
     if not prompt:
-        return (*_NOOP, "  Enter a domain prompt first.")
+        return (*_NOOP, "⚠️ Enter a domain prompt first.")
     if not user_name:
-        return (*_NOOP, "  Please save your profile in User Setup before starting.")
+        return (*_NOOP, "⚠️ Please save your profile in User Setup before starting.")
 
     profile = _load_user_profile(user_name)
     if not profile.get("pre_responses"):
-        return (*_NOOP, "  Please complete the pre-use questionnaire in User Setup before starting the one-shot generation.")
+        return (*_NOOP, "⚠️ Please complete the pre-use questionnaire in User Setup before starting the one-shot generation.")
 
     file_content = ""
     if file_obj:
@@ -839,7 +866,7 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
         )
 
     metamodel = generate_direct(generation_prompt, file_content)
-    _save_user_profile(user_name, extra={"used_one_shot": True})
+    _save_user_profile(user_name, extra={"used_one_shot": True, "tool_completed": True})
 
     out_dir = Path("session_logs")
     out_dir.mkdir(exist_ok=True)
@@ -862,6 +889,7 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
         gr.update(interactive=False),   # file_upload
         gr.update(visible=False),       # main_workspace (chat + review panels)
         gr.update(value=_to_svg(metamodel, "One-Shot Metamodel")),
+        gr.update(value=metamodel),     # final_jjscript_box: raw JjScript alongside the rendered diagram
         gr.update(value={}),
         "✅ One-shot generation complete. Please go to **User Setup** and complete the **post-use questionnaire**.",
     )
@@ -1324,18 +1352,22 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                 profile_nav_btn = gr.Button("👤 User Setup", variant="secondary", scale=1,
                                             min_width=130, elem_id="profile-nav-btn", size="sm")
 
-            gr.HTML('<hr class="input-divider">')
+            gr.HTML('<hr class="input-divider">', visible=False)
 
-            # Row 2: compact file upload + coverage button + status
-            gr.HTML('<div class="section-label" style="padding:0 0 6px">Attach file for coverage analysis (PDF / TXT / MD)</div>')
+            # Row 2: compact file upload + coverage button + status.
+            # The file-upload widget is hidden from the layout (not requested
+            # for the study) — its wiring (attach_file, coverage analysis,
+            # run_oneshot's file_obj) is left intact and just never receives
+            # a file, so nothing downstream had to change.
+            gr.HTML('<div class="section-label" style="padding:0 0 6px">Attach file for coverage analysis (PDF / TXT / MD)</div>', visible=False)
             with gr.Row(equal_height=True, elem_classes="file-row"):
-                file_upload = gr.File(
-                    show_label=False,
-                    file_types=[".pdf", ".txt", ".md"],
-                    scale=6,
-                    height=52,
-                )
-                with gr.Column(scale=1, min_width=140):
+                with gr.Column(visible=False):
+                    file_upload = gr.File(
+                        show_label=False,
+                        file_types=[".pdf", ".txt", ".md"],
+                        scale=6,
+                        height=52,
+                    )
                     open_cov_btn = gr.Button(
                         "Coverage Report",
                         variant="secondary", visible=False,
@@ -1462,6 +1494,11 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                     with gr.Row():
                         with gr.Column(scale=7):
                             output_box = gr.HTML(label="Final metamodel")
+                            with gr.Accordion("📄 Raw JjScript", open=False):
+                                final_jjscript_box = gr.Code(
+                                    value="", language=None, interactive=False,
+                                    show_label=False, lines=12,
+                                )
                         with gr.Column(scale=3):
                             final_validation_box = gr.JSON(label="Validation report", open=False)
 
@@ -1499,15 +1536,17 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
               </div>
               <div>
                 <div class="app-header-title">User Setup</div>
-                <div class="app-header-sub">Enter your participant number first, then complete the pre-use questionnaire. Fill the post-use questionnaire after using the tool.</div>
+                <div class="app-header-sub">Enter your participant ID first, then complete the pre-use questionnaire. Fill the post-use questionnaire after using the tool.</div>
               </div>
             </div>
             """)
 
             gr.Markdown(
-                "**This study is anonymous: do not enter your name.** Use a participant "
-                "number instead (you can pick any number "
-                "you like) and save it before using the tool. Your responses are identified only by that number.\n\n"
+                "**This study is anonymous — do not enter your name.** Use a participant "
+                "ID instead — a number or a short code (your researcher will give you one, "
+                "or pick any one you like) — and save it before using the tool. Your "
+                "responses are persisted to `user_profiles/` as JSON, identified only by "
+                "that ID.\n\n"
                 "All data is collected anonymously, with digital informed consent obtained "
                 "from each participant before the study begins. **You can stop "
                 "participating in this experiment at any time, for any reason, without any "
@@ -1515,8 +1554,8 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
             )
 
             username_box = gr.Textbox(
-                label="Participant number",
-                placeholder="e.g. 07",
+                label="Participant ID (number or code)",
+                placeholder="e.g. 07 or P07",
                 scale=4, lines=1,
             )
 
@@ -1615,7 +1654,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
         chatbot,
         answer_row, yes_no_row, challenge_row, approval_panel,
         concept_lbl, chunk_box, chunk_text_box, sample_box, explanation_box, validation_box,
-        output_box, final_validation_box, log_box,
+        output_box, final_jjscript_box, final_validation_box, log_box,
     ]
 
     # ── Wiring (ALL UNCHANGED) ─────────────────────────────────────────────────
@@ -1624,7 +1663,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
         run_oneshot,
         [prompt_box, file_upload, user_name_state],
         [prompt_box, start_btn, oneshot_btn, file_upload, main_workspace,
-         output_box, final_validation_box, user_warning],
+         output_box, final_jjscript_box, final_validation_box, user_warning],
     )
     timer.tick(poll, [sid_state], POLL_OUTPUTS)
 
@@ -1652,7 +1691,10 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
         [reject_feedback_group, approve_btn, reject_btn, reject_reason_box],
     )
 
-    profile_nav_btn.click(_show_profile_page, [], [main_header, input_bar, main_workspace, results_section, profile_page])
+    profile_nav_btn.click(_show_profile_page, [user_name_state],
+                          [main_header, input_bar, main_workspace, results_section, profile_page,
+                           bp_pre_form_group, engine_pre_form_group,
+                           bp_post_form_group, engine_post_form_group])
     back_to_tool_btn.click(_show_tool_page, [domain_state],
                           [main_header, input_bar, main_workspace, results_section, profile_page, prompt_box])
     save_name_btn.click(_save_user_name,
