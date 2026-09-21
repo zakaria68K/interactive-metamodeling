@@ -41,7 +41,7 @@ from __future__ import annotations
 BP_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about a Gateway in this business process? (select all that apply)",
+        "text": "Which of the following are true about a Gateway in a business process model? ",
         "options": [
             "A. A Gateway is a decision point in the process where the flow can branch",
             "B. A Gateway can direct the process down more than one possible path depending on a condition",
@@ -52,7 +52,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about an Event in this business process? (select all that apply)",
+        "text": "Which of the following are true about an Event in a business process model? ",
         "options": [
             "A. An Event is a task carried out as part of the process",
             "B. An Event marks a moment such as the start or end of the process",
@@ -63,7 +63,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between an Activity and an Actor? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between an Activity and an Actor? ",
         "options": [
             "A. An Activity is the role or person who performs a task",
             "B. An Actor is a task performed as part of the process",
@@ -74,7 +74,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between the Process and an Activity? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between the Process and an Activity? ",
         "options": [
             "A. The Process is the entire business process that Activities are a composing part of",
             "B. The Process happens after every Activity, and an Activity happens after the Process ends",
@@ -85,7 +85,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which two of the following concepts is the Process composed of? (select all that apply)",
+        "text": "Which two of the following concepts is the Process composed of? ",
         "options": [
             "A. Actor",
             "B. Activity",
@@ -96,7 +96,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how an Actor relates to other concepts? (select all that apply)",
+        "text": "Which of the following are true about how an Actor relates to other concepts? ",
         "options": [
             "A. An Actor is linked to an Activity to indicate who performs it",
             "B. An Actor is linked to a DataObject to indicate who performs it",
@@ -110,7 +110,7 @@ BP_PRE_QUESTIONS = [
 BP_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about a SequenceFlow in this business process? (select all that apply)",
+        "text": "Which of the following are true about a SequenceFlow in a business process model? ",
         "options": [
             "A. A SequenceFlow defines the order in which activities, events, and gateways occur",
             "B. A SequenceFlow is the role or person responsible for carrying out a task",
@@ -121,7 +121,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about a DataObject in this business process? (select all that apply)",
+        "text": "Which of the following are true about a DataObject in a business process model? ",
         "options": [
             "A. A DataObject is a decision point where the flow can branch",
             "B. A DataObject is information that is produced or consumed as part of an activity",
@@ -132,7 +132,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between an Actor and a DataObject? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between an Actor and a DataObject? ",
         "options": [
             "A. An Actor is the role or person responsible for an Activity",
             "B. A DataObject is information used or produced by an Activity",
@@ -143,7 +143,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between the Process and a Gateway? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between the Process and a Gateway? ",
         "options": [
             "A. The Process happens only once, while a Gateway can repeat indefinitely",
             "B. The Process is a document, and a Gateway is a role",
@@ -154,7 +154,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which of the following are true about how a DataObject relates to other concepts? (select all that apply)",
+        "text": "Which of the following are true about how a DataObject relates to other concepts? ",
         "options": [
             "A. A DataObject must be linked to an Activity to show it is produced or consumed as part of a task",
             "B. A DataObject must be linked to a Gateway to show it is produced or consumed as part of a task",
@@ -165,7 +165,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? (select all that apply)",
+        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? ",
         "options": [
             "A. An Activity is always linked to a Gateway to be valid",
             "B. An Activity can be linked to a DataObject that it produces or consumes",
@@ -181,7 +181,7 @@ BP_POST_QUESTIONS = [
 ENGINE_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about a Piston? (select all that apply)",
+        "text": "Which of the following are true about a Piston? ",
         "options": [
             "A. A Piston moves up and down inside a cylinder to compress the air-fuel mixture",
             "B. A Piston measures a physical quantity such as temperature or pressure",
@@ -192,7 +192,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about a Valve? (select all that apply)",
+        "text": "Which of the following are true about a Valve? ",
         "options": [
             "A. A Valve reads and processes sensor data to make control decisions",
             "B. A Valve is where combustion takes place",
@@ -203,7 +203,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between a Sensor and the ECU? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between a Sensor and the ECU? ",
         "options": [
             "A. A Sensor injects fuel, and the ECU moves the Piston",
             "B. A Sensor measures a physical quantity like temperature or oxygen level",
@@ -214,7 +214,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between a Cylinder and the Engine? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between a Cylinder and the Engine? ",
         "options": [
             "A. The Engine is the overall assembly composed of multiple Cylinders",
             "B. A Cylinder is one combustion chamber within the Engine",
@@ -225,7 +225,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which two of the following concepts is the Cylinder composed of? (select all that apply)",
+        "text": "Which two of the following concepts is the Cylinder composed of? ",
         "options": [
             "A. Piston",
             "B. ECU",
@@ -236,7 +236,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how the ECU relates to other concepts? (select all that apply)",
+        "text": "Which of the following are true about how the ECU relates to other concepts? ",
         "options": [
             "A. The ECU only monitors or controls other ECUs",
             "B. The ECU monitors data coming from Sensors",
@@ -250,7 +250,7 @@ ENGINE_PRE_QUESTIONS = [
 ENGINE_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about the ECU? (select all that apply)",
+        "text": "Which of the following are true about the ECU? ",
         "options": [
             "A. The ECU physically sprays fuel into the cylinder",
             "B. The ECU opens and closes to control gas flow into a cylinder",
@@ -261,7 +261,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about a FuelInjector? (select all that apply)",
+        "text": "Which of the following are true about a FuelInjector? ",
         "options": [
             "A. A FuelInjector physically sprays fuel into the cylinder",
             "B. A FuelInjector measures a physical condition such as oxygen level",
@@ -272,7 +272,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between the ECU and a FuelInjector? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between the ECU and a FuelInjector? ",
         "options": [
             "A. The ECU sprays fuel, and the FuelInjector makes control decisions",
             "B. The ECU decides how much fuel to deliver and when",
@@ -283,7 +283,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between a Piston and a Cylinder? (select all that apply)",
+        "text": "Which of the following correctly describe the difference between a Piston and a Cylinder? ",
         "options": [
             "A. A Piston is the chamber, and a Cylinder moves inside it",
             "B. A Cylinder is composed of a Piston that moves up and down inside it",
@@ -294,7 +294,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which of the following are true about the Engine's composition? (select all that apply)",
+        "text": "Which of the following are true about the Engine's composition? ",
         "options": [
             "A. The Engine is composed of multiple Cylinders",
             "B. The Engine's internal structure is composed of Cylinders along with components such as Sensors and the ECU",
@@ -305,7 +305,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how a Sensor relates to other concepts? (select all that apply)",
+        "text": "Which of the following are true about how a Sensor relates to other concepts? ",
         "options": [
             "A. A Sensor must be linked to the ECU so its readings can be used to adjust engine behavior",
             "B. A Sensor must be linked to a Piston so its readings can be used",
