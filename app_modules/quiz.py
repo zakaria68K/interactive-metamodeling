@@ -10,146 +10,169 @@ from __future__ import annotations
 # questions (rejected: answerable by a good modeler without ever using the
 # tool), "spot the flaw in this generated class" questions (rejected: the
 # flaw is hypothetical, not guaranteed to appear in any given generation),
-# and plain "which concept means X" lookups (rejected: too easy — many of
-# these concept names are self-explanatory).
+# plain "which concept means X" lookups (rejected: too easy), a run of
+# near-identical "what is the key difference between X and Y" questions
+# (rejected: monotonous), and single-correct-answer multiple choice
+# (rejected: doesn't distinguish "confidently right" from "guessed right").
 #
-# Each 6-question bank now mixes two question shapes:
-#   - "distinguish" — what separates two similar concepts from each other
-#   - "relationship" — how one concept connects to / depends on / contains
-#     another, phrased around the fact that this only becomes clear once the
-#     metamodel is actually built concept by concept (you can't know it from
-#     the domain prompt alone)
-# Phrasing is varied within and across banks so the same template doesn't
-# repeat six times in a row. Every question still has exactly 3 options with
-# a fixed, unambiguous answer from the 7-concept map — never a design choice
-# or something specific to one session's generation — and each bank splits
-# correct answers evenly 2/2/2 across A/B/C.
+# Every question now has exactly 4 options, with exactly 2 correct and 2
+# incorrect — participants select every option they believe is true, not
+# just one. Scoring is per-option (see _compute_form_score): +1 for each
+# correct option selected, +1 for each incorrect option correctly left
+# unselected, out of 4 possible points per question. Across each bank, each
+# of the 4 letters (A-D) is the "correct" slot in exactly 3 of the 6
+# questions and "incorrect" in the other 3, so position alone never signals
+# the answer.
+#
+# Each bank still mixes three question shapes, two of each:
+#   - "definition" — 2 true statements about a concept vs. 2 statements that
+#     actually describe a different concept
+#   - "difference" — 1 true statement about each of two concepts vs. those
+#     same two statements with the concepts swapped
+#   - "composition/association" — how one concept is composed of, or linked
+#     to, other concepts, as a plain fact about the domain's structure
+#     (never phrased as "once X is generated" or "before X can be linked
+#     in" — that's the tool's process, not something true of the domain
+#     itself). A whole/part relationship is described with "composed of" /
+#     "a composing part of", never "contains" or "container".
 
 # Business Process — 7 concepts: Process, Activity, Actor, Event, Gateway,
 # SequenceFlow, DataObject.
 BP_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "What is the key difference between a Gateway and an Event in this process model?",
+        "text": "Which of the following are true about a Gateway in this business process? (select all that apply)",
         "options": [
-            "A. A Gateway is a decision point where the flow can branch; an Event marks a moment such as the start or end of the process",
-            "B. A Gateway produces a document; an Event assigns an Actor",
-            "C. A Gateway can only appear once per process; an Event can appear multiple times",
+            "A. A Gateway is a decision point in the process where the flow can branch",
+            "B. A Gateway can direct the process down more than one possible path depending on a condition",
+            "C. A Gateway is the role or person who carries out a task in the process",
+            "D. A Gateway is a record of information exchanged between activities",
         ],
-        "answer": "A",
+        "answers": ["A", "B"],
     },
     {
         "id": "q2",
-        "text": "When the tool builds the Actor concept, which existing concept does it connect Actor to, in order to say who performs which work?",
+        "text": "Which of the following are true about an Event in this business process? (select all that apply)",
         "options": [
-            "A. DataObject",
-            "B. Activity",
-            "C. Event",
+            "A. An Event is a task carried out as part of the process",
+            "B. An Event marks a moment such as the start or end of the process",
+            "C. An Event can trigger the beginning of a task without being a task itself",
+            "D. An Event is a document consumed or produced while the process runs",
         ],
-        "answer": "B",
+        "answers": ["B", "C"],
     },
     {
         "id": "q3",
-        "text": "What is the key difference between an Activity and an Actor in this process model?",
+        "text": "Which of the following correctly describe the difference between an Activity and an Actor? (select all that apply)",
         "options": [
-            "A. An Activity always follows a Gateway; an Actor always precedes a SequenceFlow",
-            "B. An Activity is a document; an Actor is a decision point",
-            "C. An Activity is a task performed as part of the process; an Actor is the role or person who performs it",
+            "A. An Activity is the role or person who performs a task",
+            "B. An Actor is a task performed as part of the process",
+            "C. An Activity is a task performed as part of the process",
+            "D. An Actor is the role or person who performs an Activity",
         ],
-        "answer": "C",
+        "answers": ["C", "D"],
     },
     {
         "id": "q4",
-        "text": "A SequenceFlow needs a source and a target. Which kinds of concepts can those be?",
+        "text": "Which of the following correctly describe the difference between the Process and an Activity? (select all that apply)",
         "options": [
-            "A. Activities, Events, or Gateways",
-            "B. Only Actors",
-            "C. Only DataObjects",
+            "A. The Process is the entire business process that Activities are a composing part of",
+            "B. The Process happens after every Activity, and an Activity happens after the Process ends",
+            "C. An Activity is one composing part of the overall Process",
+            "D. The Process is a document, and an Activity is a person",
         ],
-        "answer": "A",
+        "answers": ["A", "C"],
     },
     {
         "id": "q5",
-        "text": "What is the key difference between the Process and an Activity?",
+        "text": "Which two of the following concepts is the Process composed of? (select all that apply)",
         "options": [
-            "A. The Process happens after every Activity; an Activity happens after the Process ends",
-            "B. The Process is the overall container for the whole model; an Activity is one task within it",
-            "C. The Process is a document; an Activity is a person",
+            "A. Actor",
+            "B. Activity",
+            "C. DataObject",
+            "D. Event",
         ],
-        "answer": "B",
+        "answers": ["B", "D"],
     },
     {
         "id": "q6",
-        "text": "Which concept sits at the top of the containment chain, owning every Activity, Event, and Gateway once they're generated?",
+        "text": "Which of the following are true about how an Actor relates to other concepts? (select all that apply)",
         "options": [
-            "A. SequenceFlow",
-            "B. Actor",
-            "C. Process",
+            "A. An Actor is linked to an Activity to indicate who performs it",
+            "B. An Actor is linked to a DataObject to indicate who performs it",
+            "C. An Actor is composed of the Process, Event, and Gateway concepts",
+            "D. An Actor is the role or person responsible for carrying out a task",
         ],
-        "answer": "C",
+        "answers": ["A", "D"],
     },
 ]
 
 BP_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "What is the key difference between a SequenceFlow and a DataObject?",
+        "text": "Which of the following are true about a SequenceFlow in this business process? (select all that apply)",
         "options": [
-            "A. A SequenceFlow defines the order activities happen in; a DataObject represents information passed along the way, not the order itself",
-            "B. A SequenceFlow is a role; a DataObject is a decision point",
-            "C. A SequenceFlow only appears at the start of the process; a DataObject only appears at the end",
+            "A. A SequenceFlow defines the order in which activities, events, and gateways occur",
+            "B. A SequenceFlow is the role or person responsible for carrying out a task",
+            "C. A SequenceFlow connects one process element to the next in the flow",
+            "D. A SequenceFlow is a piece of information consumed or produced while the process runs",
         ],
-        "answer": "A",
+        "answers": ["A", "C"],
     },
     {
         "id": "q2",
-        "text": "Once a DataObject concept is generated, which other concept must already exist for the DataObject to be linked as something it's produced or consumed by?",
+        "text": "Which of the following are true about a DataObject in this business process? (select all that apply)",
         "options": [
-            "A. Gateway",
-            "B. Event",
-            "C. Activity",
+            "A. A DataObject is a decision point where the flow can branch",
+            "B. A DataObject is information that is produced or consumed as part of an activity",
+            "C. A DataObject is a moment marking the start or end of the process",
+            "D. A DataObject can be passed along the process without itself performing any task",
         ],
-        "answer": "C",
+        "answers": ["B", "D"],
     },
     {
         "id": "q3",
-        "text": "What is the key difference between an Actor and a DataObject?",
+        "text": "Which of the following correctly describe the difference between an Actor and a DataObject? (select all that apply)",
         "options": [
-            "A. An Actor always follows a SequenceFlow; a DataObject always precedes a Gateway",
-            "B. An Actor is a decision point; a DataObject is a moment in time",
-            "C. An Actor is the role or person responsible for an Activity; a DataObject is information used or produced by an Activity",
+            "A. An Actor is the role or person responsible for an Activity",
+            "B. A DataObject is information used or produced by an Activity",
+            "C. An Actor is information used or produced by an Activity",
+            "D. A DataObject is the role or person responsible for an Activity",
         ],
-        "answer": "C",
+        "answers": ["A", "B"],
     },
     {
         "id": "q4",
-        "text": "A Gateway needs to connect to other elements to fit into the process flow. Which kinds of concepts can it connect to via SequenceFlow?",
+        "text": "Which of the following correctly describe the difference between the Process and a Gateway? (select all that apply)",
         "options": [
-            "A. Activities, Events, or other Gateways",
-            "B. Only DataObjects",
-            "C. Only Actors",
+            "A. The Process happens only once, while a Gateway can repeat indefinitely",
+            "B. The Process is a document, and a Gateway is a role",
+            "C. The Process is the whole business process that a Gateway is one decision point within",
+            "D. A Gateway is just one decision point within the overall Process",
         ],
-        "answer": "A",
+        "answers": ["C", "D"],
     },
     {
         "id": "q5",
-        "text": "What is the key difference between the Process and a Gateway?",
+        "text": "Which of the following are true about how a DataObject relates to other concepts? (select all that apply)",
         "options": [
-            "A. The Process happens only once; a Gateway can repeat indefinitely",
-            "B. The Process is the container for the entire model; a Gateway is just one decision point within it",
-            "C. The Process is a document; a Gateway is a role",
+            "A. A DataObject must be linked to an Activity to show it is produced or consumed as part of a task",
+            "B. A DataObject must be linked to a Gateway to show it is produced or consumed as part of a task",
+            "C. A DataObject must be linked to an Event to show it is produced or consumed as part of a task",
+            "D. A DataObject can represent information used by more than one Activity",
         ],
-        "answer": "B",
+        "answers": ["A", "D"],
     },
     {
         "id": "q6",
-        "text": "Which concept represents something an Activity is linked to, other than the Actor responsible for it?",
+        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? (select all that apply)",
         "options": [
-            "A. Gateway",
-            "B. DataObject",
-            "C. Event",
+            "A. An Activity is always linked to a Gateway to be valid",
+            "B. An Activity can be linked to a DataObject that it produces or consumes",
+            "C. An Activity is connected to other elements of the flow through SequenceFlow",
+            "D. An Activity is composed of the Process, Event, and Actor concepts",
         ],
-        "answer": "B",
+        "answers": ["B", "C"],
     },
 ]
 
@@ -158,126 +181,138 @@ BP_POST_QUESTIONS = [
 ENGINE_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "What is the key difference between a Piston and a Valve inside a Cylinder?",
+        "text": "Which of the following are true about a Piston? (select all that apply)",
         "options": [
-            "A. The Piston moves up and down to compress the air-fuel mixture; the Valve opens and closes to let air or exhaust gases in and out",
-            "B. The Piston reads sensor data; the Valve injects fuel",
-            "C. The Piston is controlled by the ECU only; the Valve is controlled by the FuelInjector only",
+            "A. A Piston moves up and down inside a cylinder to compress the air-fuel mixture",
+            "B. A Piston measures a physical quantity such as temperature or pressure",
+            "C. A Piston opens and closes to let air or exhaust gases in and out of a cylinder",
+            "D. A Piston transmits the force of combustion to the engine's mechanical output",
         ],
-        "answer": "A",
+        "answers": ["A", "D"],
     },
     {
         "id": "q2",
-        "text": "Before a FuelInjector concept can be linked into the engine metamodel, which concept must already exist to contain it?",
+        "text": "Which of the following are true about a Valve? (select all that apply)",
         "options": [
-            "A. ECU",
-            "B. Sensor",
-            "C. Cylinder",
+            "A. A Valve reads and processes sensor data to make control decisions",
+            "B. A Valve is where combustion takes place",
+            "C. A Valve opens and closes to let air or exhaust gases in and out of a cylinder",
+            "D. A Valve controls the timing of gas flow into and out of the combustion chamber",
         ],
-        "answer": "C",
+        "answers": ["C", "D"],
     },
     {
         "id": "q3",
-        "text": "What is the key difference between a Sensor and the ECU?",
+        "text": "Which of the following correctly describe the difference between a Sensor and the ECU? (select all that apply)",
         "options": [
-            "A. A Sensor injects fuel; the ECU moves the Piston",
-            "B. A Sensor measures a physical quantity like temperature; the ECU reads that data and makes control decisions",
-            "C. A Sensor is contained in the FuelInjector; the ECU is contained in the Valve",
+            "A. A Sensor injects fuel, and the ECU moves the Piston",
+            "B. A Sensor measures a physical quantity like temperature or oxygen level",
+            "C. The ECU reads sensor data and makes control decisions",
+            "D. A Sensor and the ECU are two names for the same component",
         ],
-        "answer": "B",
+        "answers": ["B", "C"],
     },
     {
         "id": "q4",
-        "text": "Which concepts does the ECU directly monitor or control in this engine model?",
+        "text": "Which of the following correctly describe the difference between a Cylinder and the Engine? (select all that apply)",
         "options": [
-            "A. Sensors and FuelInjectors",
-            "B. Only the Engine itself, nothing more specific",
-            "C. Only other ECUs",
+            "A. The Engine is the overall assembly composed of multiple Cylinders",
+            "B. A Cylinder is one combustion chamber within the Engine",
+            "C. The Engine only has one Cylinder, always",
+            "D. The Engine is a Sensor, and a Cylinder is an ECU",
         ],
-        "answer": "A",
+        "answers": ["A", "B"],
     },
     {
         "id": "q5",
-        "text": "What is the key difference between a Cylinder and the Engine?",
+        "text": "Which two of the following concepts is the Cylinder composed of? (select all that apply)",
         "options": [
-            "A. The Engine only has one Cylinder, always",
-            "B. The Engine is the overall assembly that contains multiple Cylinders; a Cylinder is one combustion chamber within it",
-            "C. The Engine is a Sensor; a Cylinder is an ECU",
+            "A. Piston",
+            "B. ECU",
+            "C. FuelInjector",
+            "D. Sensor",
         ],
-        "answer": "B",
+        "answers": ["A", "C"],
     },
     {
         "id": "q6",
-        "text": "As the metamodel is generated concept by concept, which single concept ends up being the container for the Piston, the Valve, and the FuelInjector alike?",
+        "text": "Which of the following are true about how the ECU relates to other concepts? (select all that apply)",
         "options": [
-            "A. ECU",
-            "B. Sensor",
-            "C. Cylinder",
+            "A. The ECU only monitors or controls other ECUs",
+            "B. The ECU monitors data coming from Sensors",
+            "C. The ECU is a component that physically sprays fuel into the cylinder",
+            "D. The ECU controls the behavior of FuelInjectors",
         ],
-        "answer": "C",
+        "answers": ["B", "D"],
     },
 ]
 
 ENGINE_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "What is the key difference between a Valve and a Sensor?",
+        "text": "Which of the following are true about the ECU? (select all that apply)",
         "options": [
-            "A. A Valve controls the physical flow of gases in and out of a Cylinder; a Sensor measures a condition like temperature or oxygen level",
-            "B. A Valve reads data; a Sensor sprays fuel",
-            "C. A Valve is a type of ECU; a Sensor is a type of FuelInjector",
+            "A. The ECU physically sprays fuel into the cylinder",
+            "B. The ECU opens and closes to control gas flow into a cylinder",
+            "C. The ECU receives sensor data and decides how the engine should respond",
+            "D. The ECU can adjust fuel delivery based on the conditions it detects",
         ],
-        "answer": "A",
+        "answers": ["C", "D"],
     },
     {
         "id": "q2",
-        "text": "Which component reads data from a Sensor in order to adjust engine behavior?",
+        "text": "Which of the following are true about a FuelInjector? (select all that apply)",
         "options": [
-            "A. The ECU",
-            "B. A Valve",
-            "C. A Piston",
+            "A. A FuelInjector physically sprays fuel into the cylinder",
+            "B. A FuelInjector measures a physical condition such as oxygen level",
+            "C. A FuelInjector moves up and down to compress the air-fuel mixture",
+            "D. A FuelInjector releases fuel based on timing decided by the ECU",
         ],
-        "answer": "A",
+        "answers": ["A", "D"],
     },
     {
         "id": "q3",
-        "text": "What is the key difference between the ECU and a FuelInjector?",
+        "text": "Which of the following correctly describe the difference between the ECU and a FuelInjector? (select all that apply)",
         "options": [
-            "A. The ECU sprays fuel; the FuelInjector makes control decisions",
-            "B. The ECU decides how much fuel to deliver and when; the FuelInjector is the component that physically sprays that fuel into the Cylinder",
+            "A. The ECU sprays fuel, and the FuelInjector makes control decisions",
+            "B. The ECU decides how much fuel to deliver and when",
             "C. The ECU and the FuelInjector are interchangeable names for the same part",
+            "D. The FuelInjector is the component that physically sprays that fuel into the Cylinder",
         ],
-        "answer": "B",
+        "answers": ["B", "D"],
     },
     {
         "id": "q4",
-        "text": "Once the Sensor concept exists in the metamodel, which concept does it need to be linked to so its readings can actually be used?",
+        "text": "Which of the following correctly describe the difference between a Piston and a Cylinder? (select all that apply)",
         "options": [
-            "A. Piston",
-            "B. ECU",
-            "C. Valve",
+            "A. A Piston is the chamber, and a Cylinder moves inside it",
+            "B. A Cylinder is composed of a Piston that moves up and down inside it",
+            "C. A Piston is a composing part that moves within the Cylinder",
+            "D. A Piston and a Cylinder are unrelated, appearing in different engines",
         ],
-        "answer": "B",
+        "answers": ["B", "C"],
     },
     {
         "id": "q5",
-        "text": "What is the key difference between a Piston and a Cylinder?",
+        "text": "Which of the following are true about the Engine's composition? (select all that apply)",
         "options": [
-            "A. A Piston is the chamber; a Cylinder moves inside it",
-            "B. A Piston and a Cylinder are unrelated, appearing in different engines",
-            "C. A Cylinder is the chamber that houses a Piston, which moves up and down inside it",
+            "A. The Engine is composed of multiple Cylinders",
+            "B. The Engine's internal structure is composed of Cylinders along with components such as Sensors and the ECU",
+            "C. The Engine is one of several components inside a single Cylinder",
+            "D. The Engine and a Sensor are the same kind of component",
         ],
-        "answer": "C",
+        "answers": ["A", "B"],
     },
     {
         "id": "q6",
-        "text": "Which single concept, once generated, becomes the container that every Cylinder in the engine belongs to?",
+        "text": "Which of the following are true about how a Sensor relates to other concepts? (select all that apply)",
         "options": [
-            "A. Sensor",
-            "B. ECU",
-            "C. Engine",
+            "A. A Sensor must be linked to the ECU so its readings can be used to adjust engine behavior",
+            "B. A Sensor must be linked to a Piston so its readings can be used",
+            "C. A Sensor provides data that supports the ECU's control decisions",
+            "D. A Sensor must be linked to a Valve so its readings can be used",
         ],
-        "answer": "C",
+        "answers": ["A", "C"],
     },
 ]
 
@@ -318,16 +353,27 @@ DOMAINS = {
 
 
 def _compute_form_score(responses: dict[str, object], questions: list[dict]) -> int:
-    total = len(questions)
-    if total == 0:
+    """Per-option scoring: +1 for each correct option selected, +1 for each
+    incorrect option correctly left unselected — 4 points max per question
+    (2 correct options + 2 incorrect options). Returned as a 0-100 score,
+    normalized by the maximum achievable points, to stay compatible with the
+    rest of the app (profiles, CSV logs) which already store scores that way.
+    """
+    total_questions = len(questions)
+    if total_questions == 0:
         return 0
 
-    correct = 0
+    max_points = total_questions * 4
+    points = 0
     for question in questions:
         raw = responses.get(question["id"]) or []
         selected = [raw] if isinstance(raw, str) else list(raw)
-        letters = {choice.strip()[0].upper() for choice in selected if choice.strip()}
-        if letters == {question["answer"].upper()}:
-            correct += 1
+        selected_letters = {choice.strip()[0].upper() for choice in selected if choice.strip()}
+        correct_letters = {letter.upper() for letter in question["answers"]}
+        all_letters = {option.strip()[0].upper() for option in question["options"]}
+        incorrect_letters = all_letters - correct_letters
 
-    return round((correct / total) * 100)
+        points += sum(1 for letter in correct_letters if letter in selected_letters)
+        points += sum(1 for letter in incorrect_letters if letter not in selected_letters)
+
+    return round((points / max_points) * 100)
