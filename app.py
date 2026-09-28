@@ -15,7 +15,7 @@ from metaLoop.llm_client import LLMClient
 from metaLoop.metamodeling_agent import MetamodelingAgent
 from metaLoop.imageGeneration.jjscript_to_image import parse_jjscript, build_svg
 from metaLoop.baselineApproaches.direct_generation import generate_direct
-from app_modules.quiz import DOMAINS, _compute_form_score
+from app_modules.quiz import DOMAINS, _compute_form_score, select_post_questions
 from app_modules.profile import _load_user_profile, _save_user_profile
 from app_modules.svg_utils import _to_svg
 from app_modules.data_logger import log_quiz, log_session
@@ -26,10 +26,10 @@ from app_modules.data_logger import log_quiz, log_session
 # when they think more than one applies, rather than defaulting to a single
 # guess as they would for an ordinary multiple-choice question.
 _QUIZ_MULTISELECT_NOTE = (
-    "One or more answers may be correct for each question, select every "
+    "_One or more answers may be correct for each question — select every "
     "option you believe is true. This is what lets the score measure your "
     "understanding precisely, rather than just whether you can spot a "
-    "single best guess."
+    "single best guess._"
 )
 
 
@@ -44,13 +44,29 @@ _COLORS = [
 def _show_profile_page(username: str):
     # The post-use questionnaire for a domain only ever appears once that
     # participant's profile shows they've actually completed a run (see
-    # "tool_completed", set by _save_session and run_oneshot)  ,never right
+    # "tool_completed", set by _save_session and run_oneshot) — never right
     # after submitting the pre-use questionnaire, and never for the domain
     # they aren't assigned to. Once it does appear, the pre-use form for
-    # that domain is hidden  ,only one of the two is ever shown at a time.
+    # that domain is hidden — only one of the two is ever shown at a time.
     profile = _load_user_profile(username) if (username or "").strip() else {}
     domain = profile.get("domain", "")
     tool_completed = bool(profile.get("tool_completed"))
+
+    def _composition_slot_updates(domain_key: str):
+        # No-op everywhere except the participant's own, now-completed
+        # domain: that's the only case where we know which metamodel to
+        # check the composition/association questions against.
+        if domain != domain_key or not tool_completed:
+            return (gr.update(), gr.update(), gr.update(), gr.update())
+        selected = select_post_questions(domain_key, profile.get("final_metamodel_text", ""))
+        q5, q6 = selected[4], selected[5]
+        return (
+            gr.update(value=f"**{q5['id'].upper()}** {q5['text']}"),
+            gr.update(choices=q5["options"], value=[]),
+            gr.update(value=f"**{q6['id'].upper()}** {q6['text']}"),
+            gr.update(choices=q6["options"], value=[]),
+        )
+
     return (
         gr.update(visible=False),
         gr.update(visible=False),
@@ -61,13 +77,15 @@ def _show_profile_page(username: str):
         gr.update(visible=domain == "engine" and not tool_completed),
         gr.update(visible=domain == "bp" and tool_completed),
         gr.update(visible=domain == "engine" and tool_completed),
+        *_composition_slot_updates("bp"),
+        *_composition_slot_updates("engine"),
     )
 
 
 def _show_tool_page(domain: str):
     # Pre-fill the domain prompt with its fixed description (User-study.md:
     # every participant in a domain builds the same metamodel) but leave it
-    # editable  ,the participant can tweak it if they want to.
+    # editable — the participant can tweak it if they want to.
     prompt_update = gr.update()
     if domain in DOMAINS:
         prompt_update = gr.update(value=DOMAINS[domain]["prompt"], interactive=True)
@@ -124,7 +142,7 @@ def _make_submit_pre(domain_key: str):
         _save_user_profile(username, pre_data=responses, pre_score=score)
         log_quiz(username, domain_key, "pre", responses, score)
         status = "Pre-use evaluation saved successfully."
-        # The post-use questionnaire stays hidden here  ,it only appears once
+        # The post-use questionnaire stays hidden here — it only appears once
         # the participant has actually used the tool (see _show_profile_page).
         # Once the pre-use form is in, jump straight to the tool page instead
         # of leaving them stranded on User Setup.
@@ -135,12 +153,18 @@ def _make_submit_pre(domain_key: str):
 
 
 def _make_submit_post(domain_key: str):
-    questions = DOMAINS[domain_key]["post"]
-
     def handler(name: str, *answers):
         username = (name or "").strip()
         if not username:
             return "", "⚠️ Save your participant ID first."
+
+        # Recomputed here rather than captured once at import time: this
+        # must be the exact same 6 questions _show_profile_page displayed
+        # for this participant (2 of them chosen per their own generated
+        # metamodel — see select_post_questions), or scoring would grade
+        # against a question they never actually saw.
+        profile = _load_user_profile(username)
+        questions = select_post_questions(domain_key, profile.get("final_metamodel_text", ""))
 
         responses = {
             question["id"]: (answers[idx] if idx < len(answers) else [])
@@ -412,8 +436,6 @@ def _build_coverage_html(file_content: str, analysis: dict, all_concepts: list[s
 
 # ── Agent thread ───────────────────────────────────────────────────────────────
 def _run_agent(sess: _Session, prompt: str) -> None:
-    agent = MetamodelingAgent()
-
     def user_responder(question: str, context: dict) -> str:
         if context.get("validation_stage") == "file_new_concepts_selection":
             sess.log.append(f"[{_ts()}] File concept suggestions handled via coverage checkbox UI.")
@@ -486,6 +508,12 @@ def _run_agent(sess: _Session, prompt: str) -> None:
         return {"approved": approved, "feedback": feedback} if feedback else approved
 
     try:
+        # Constructing the agent (and its LLMClient/ChatOpenAI) belongs
+        # inside the try: a bad or missing API key raising here used to
+        # kill this background thread silently, before it ever appended
+        # anything to sess.log -- the participant's UI would just show
+        # "Running..." forever with no error and no way to tell why.
+        agent = MetamodelingAgent()
         initial_state = (
             {"attached_file_content": sess.attached_file_content}
             if sess.attached_file_content else {}
@@ -504,7 +532,7 @@ def _run_agent(sess: _Session, prompt: str) -> None:
         while sess.extra_concepts:
             extra = sess.extra_concepts[:]
             sess.extra_concepts = []
-            sess.log.append(f"[{_ts()}] Extra round: {len(extra)} concept(s)  ,{', '.join(extra)}")
+            sess.log.append(f"[{_ts()}] Extra round: {len(extra)} concept(s) — {', '.join(extra)}")
             seed = {
                 "user_prompt": prompt,
                 "attached_file_content": sess.attached_file_content,
@@ -552,7 +580,14 @@ def _save_session(sess: _Session, result: dict) -> None:
     (out_dir / f"session_{ts}.json").write_text(json.dumps(data, indent=2))
     log_session(data)  # also pushed off-Space; local session_logs/ alone won't survive a Space restart
     if sess.user_name:
-        _save_user_profile(sess.user_name, extra={"tool_completed": True})
+        # Persisted so the post-quiz can later check which composition/
+        # association facts actually hold in what THIS participant's model
+        # contains (see select_post_questions) instead of assuming the
+        # fixed baseline is what got built.
+        _save_user_profile(sess.user_name, extra={
+            "tool_completed": True,
+            "final_metamodel_text": result.get("final_metamodel", ""),
+        })
 
 
 # ── Event handlers (ALL LOGIC UNCHANGED) ──────────────────────────────────────
@@ -583,7 +618,7 @@ def start(prompt: str, sid: str, user_name: str):
             gr.update(visible=False), gr.update(visible=False),
             gr.update(visible=False), gr.update(visible=False),
             gr.update(), gr.update(),
-            gr.update(value="⚠️ This profile already used the one-shot (control) mode  ,the interactive tool is disabled for this study session."),
+            gr.update(value="⚠️ This profile already used the one-shot (control) mode — the interactive tool is disabled for this study session."),
             "",
         )
 
@@ -601,7 +636,7 @@ def start(prompt: str, sid: str, user_name: str):
     _sessions[new_sid] = sess
     # Mark the profile as having used the tool as soon as an interactive
     # session actually launches, rather than waiting for the full
-    # concept-by-concept graph to run to completion  ,that graph only
+    # concept-by-concept graph to run to completion — that graph only
     # finishes once every chunk has been approved through to the end, which
     # a participant may reasonably stop short of after genuinely using the
     # tool for a while. Gating post-quiz visibility on that full completion
@@ -871,7 +906,7 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
 
     # Force the same concept vocabulary the pre/post questionnaire is
     # calibrated against, so the one-shot condition is quizzable exactly
-    # like the interactive condition  ,unlike the interactive path this is
+    # like the interactive condition — unlike the interactive path this is
     # a hard requirement in the prompt, not a nudge, since there's no
     # elicitation round-trip here to steer it back on track.
     required_concepts = DOMAINS.get(profile.get("domain", ""), {}).get("concepts", [])
@@ -884,7 +919,11 @@ def run_oneshot(prompt: str, file_obj, user_name: str):
         )
 
     metamodel = generate_direct(generation_prompt, file_content)
-    _save_user_profile(user_name, extra={"used_one_shot": True, "tool_completed": True})
+    _save_user_profile(user_name, extra={
+        "used_one_shot": True,
+        "tool_completed": True,
+        "final_metamodel_text": metamodel,
+    })
 
     out_dir = Path("session_logs")
     out_dir.mkdir(exist_ok=True)
@@ -936,7 +975,7 @@ body, .gradio-container {
    Gradio renders a gr.Group as an outer wrapper plus an inner `.styler` div
    that actually holds the content and collapses when the group is hidden.
    Card chrome (background/border/padding/shadow) must live on `.styler`,
-   not on the outer wrapper class  ,otherwise the wrapper's own padding and
+   not on the outer wrapper class — otherwise the wrapper's own padding and
    border stay on screen as an empty "ghost card" whenever the group's
    content is toggled to visible=False (e.g. switching to the User Setup
    page), and the theme's default gray gap-fill shows through any part of
@@ -1034,7 +1073,7 @@ body, .gradio-container {
 
 /* ── Buttons ──
    Alignment lives on the row (align-items), not on each button
-   individually  ,a per-button `align-self` only fixes that one button,
+   individually — a per-button `align-self` only fixes that one button,
    so any sibling without the same override (as User Setup used to be)
    drifts out of line the moment row heights aren't pixel-identical
    (e.g. one label wrapping at a narrower viewport). All three buttons
@@ -1341,7 +1380,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
       </div>
       <div>
         <div class="app-header-title">Metamodel Generator</div>
-        <div class="app-header-sub">Describe your software domain  ,get a JjScript metamodel built concept-by-concept through guided elicitation.</div>
+        <div class="app-header-sub">Describe your software domain — get a JjScript metamodel built concept-by-concept through guided elicitation.</div>
       </div>
     </div>
     """)
@@ -1349,8 +1388,8 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
     # ── Input bar ─────────────────────────────────────────────────────────────
     # NOTE: the visibility toggle (User Setup <-> tool) is applied to the outer
     # `gr.Column`, not the inner `gr.Group`. Gradio's Group component does not
-    # add a "hide" class to its own wrapper when `visible=False`  ,only to the
-    # Rows/Forms nested inside it  ,so a Group carrying its own border/padding
+    # add a "hide" class to its own wrapper when `visible=False` — only to the
+    # Rows/Forms nested inside it — so a Group carrying its own border/padding
     # CSS is left behind as an empty "ghost card" when hidden. A plain Column
     # hides itself correctly, so it owns the toggle while the Group underneath
     # (never independently toggled) keeps the seamless card styling.
@@ -1375,7 +1414,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
 
             # Row 2: compact file upload + coverage button + status.
             # The file-upload widget is hidden from the layout (not requested
-            # for the study)  ,its wiring (attach_file, coverage analysis,
+            # for the study) — its wiring (attach_file, coverage analysis,
             # run_oneshot's file_obj) is left intact and just never receives
             # a file, so nothing downstream had to change.
             gr.HTML('<div class="section-label" style="padding:0 0 6px">Attach file for coverage analysis (PDF / TXT / MD)</div>', visible=False)
@@ -1405,7 +1444,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
     # ── Main workspace ────────────────────────────────────────────────────────
     with gr.Row(equal_height=False) as main_workspace:
 
-        # LEFT  ,conversation
+        # LEFT — conversation
         with gr.Column(scale=5, elem_classes="chat-panel"):
             gr.HTML('<div class="section-label">Conversation</div>')
             chatbot = gr.Chatbot(
@@ -1442,7 +1481,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                     ch_hard_btn = gr.Button("Hard",     variant="stop",      scale=1,
                                             size="sm", elem_classes="ch-btn")
 
-        # RIGHT  ,review workspace
+        # RIGHT — review workspace
         with gr.Column(scale=7, elem_classes="review-panel"):
             gr.HTML('<div class="section-label">Review Workspace</div>')
 
@@ -1533,7 +1572,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
 
     with gr.Group(visible=False) as new_concepts_group:
         gr.HTML('<hr style="border:none;border-top:1px solid #e2e8f0;margin:10px 0">')
-        gr.Markdown("**New domain concepts found  ,select which to add to the next iteration:**")
+        gr.Markdown("**New domain concepts found — select which to add to the next iteration:**")
         new_concepts_box = gr.CheckboxGroup(choices=[], label="", interactive=True)
         confirm_add_btn  = gr.Button("Queue selected for next iteration",
                                      variant="primary", scale=0, size="sm")
@@ -1561,9 +1600,9 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
             """)
 
             gr.Markdown(
-                "**This study is anonymous  ,do not enter your name.** Use a participant "
-                "ID instead  ,a number or a short code (your researcher will give you one, "
-                "or pick any one you like)  ,and save it before using the tool. Your "
+                "**This study is anonymous — do not enter your name.** Use a participant "
+                "ID instead — a number or a short code (your researcher will give you one, "
+                "or pick any one you like) — and save it before using the tool. Your "
                 "responses are persisted to `user_profiles/` as JSON, identified only by "
                 "that ID.\n\n"
                 "All data is collected anonymously, with digital informed consent obtained "
@@ -1597,10 +1636,10 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
 
             # Two domains, each with its own pre/post question bank (see
             # app_modules/quiz.py). Only the group matching the saved profile's
-            # domain is ever made visible  ,the other stays hidden throughout.
+            # domain is ever made visible — the other stays hidden throughout.
             bp_pre_checks = []
             with gr.Group(visible=False) as bp_pre_form_group:
-                gr.Markdown(f"### Pre-use questionnaire  ,{DOMAINS['bp']['label']}")
+                gr.Markdown(f"### Pre-use questionnaire — {DOMAINS['bp']['label']}")
                 gr.Markdown(_QUIZ_MULTISELECT_NOTE)
                 for question in DOMAINS["bp"]["pre"]:
                     gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
@@ -1616,7 +1655,7 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
 
             engine_pre_checks = []
             with gr.Group(visible=False) as engine_pre_form_group:
-                gr.Markdown(f"### Pre-use questionnaire  ,{DOMAINS['engine']['label']}")
+                gr.Markdown(f"### Pre-use questionnaire — {DOMAINS['engine']['label']}")
                 gr.Markdown(_QUIZ_MULTISELECT_NOTE)
                 for question in DOMAINS["engine"]["pre"]:
                     gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
@@ -1632,12 +1671,19 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
 
             pre_form_status = gr.Markdown("")
 
+            # bp_post_labels/engine_post_labels hold the per-question Markdown
+            # refs (not just the CheckboxGroups) because the 2 composition/
+            # association questions (index 4, 5 — "q5"/"q6") get their text
+            # AND options swapped per participant in _show_profile_page, once
+            # their actual generated metamodel is known (see
+            # select_post_questions in app_modules/quiz.py).
             bp_post_checks = []
+            bp_post_labels = []
             with gr.Group(visible=False) as bp_post_form_group:
-                gr.Markdown(f"### Post-use questionnaire  ,{DOMAINS['bp']['label']}")
+                gr.Markdown(f"### Post-use questionnaire — {DOMAINS['bp']['label']}")
                 gr.Markdown(_QUIZ_MULTISELECT_NOTE)
                 for question in DOMAINS["bp"]["post"]:
-                    gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
+                    bp_post_labels.append(gr.Markdown(f"**{question['id'].upper()}** {question['text']}"))
                     bp_post_checks.append(
                         gr.CheckboxGroup(
                             choices=question["options"],
@@ -1649,11 +1695,12 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
                 bp_submit_post_btn = gr.Button("Submit post-use evaluation", variant="primary", scale=1)
 
             engine_post_checks = []
+            engine_post_labels = []
             with gr.Group(visible=False) as engine_post_form_group:
-                gr.Markdown(f"### Post-use questionnaire  ,{DOMAINS['engine']['label']}")
+                gr.Markdown(f"### Post-use questionnaire — {DOMAINS['engine']['label']}")
                 gr.Markdown(_QUIZ_MULTISELECT_NOTE)
                 for question in DOMAINS["engine"]["post"]:
-                    gr.Markdown(f"**{question['id'].upper()}** {question['text']}")
+                    engine_post_labels.append(gr.Markdown(f"**{question['id'].upper()}** {question['text']}"))
                     engine_post_checks.append(
                         gr.CheckboxGroup(
                             choices=question["options"],
@@ -1717,7 +1764,9 @@ with gr.Blocks(title="Metamodel Generator", fill_width=True) as demo:
     profile_nav_btn.click(_show_profile_page, [user_name_state],
                           [main_header, input_bar, main_workspace, results_section, profile_page,
                            bp_pre_form_group, engine_pre_form_group,
-                           bp_post_form_group, engine_post_form_group])
+                           bp_post_form_group, engine_post_form_group,
+                           bp_post_labels[4], bp_post_checks[4], bp_post_labels[5], bp_post_checks[5],
+                           engine_post_labels[4], engine_post_checks[4], engine_post_labels[5], engine_post_checks[5]])
     back_to_tool_btn.click(_show_tool_page, [domain_state],
                           [main_header, input_bar, main_workspace, results_section, profile_page, prompt_box])
     save_name_btn.click(_save_user_name,
@@ -1751,7 +1800,7 @@ if __name__ == "__main__":
     # Gradio serializes every event handler to 1 concurrent call by default
     # (Blocks.queue()'s default_concurrency_limit). That's invisible for the
     # interactive tool, whose actual LLM work runs in per-session background
-    # threads outside Gradio's queue entirely  ,but run_oneshot() calls the
+    # threads outside Gradio's queue entirely — but run_oneshot() calls the
     # LLM synchronously inside its own click handler, so with the default it
     # would process one-shot requests one at a time, queuing every other
     # participant behind whoever clicked first. Raising both here removes

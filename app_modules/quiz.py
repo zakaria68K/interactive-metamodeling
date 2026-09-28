@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from metaLoop.imageGeneration.jjscript_to_image import parse_jjscript
+
 # Two study domains, each with a fixed domain-prompt description (so every
 # participant in that domain builds the same metamodel, per User-study.md)
 # and its own pre/post question bank. Pre and post ask different questions
@@ -41,7 +43,7 @@ from __future__ import annotations
 BP_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about a Gateway in a business process model? ",
+        "text": "Which of the following are true about a Gateway in this business process? (select all that apply)",
         "options": [
             "A. A Gateway is a decision point in the process where the flow can branch",
             "B. A Gateway can direct the process down more than one possible path depending on a condition",
@@ -52,7 +54,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about an Event in a business process model? ",
+        "text": "Which of the following are true about an Event in this business process? (select all that apply)",
         "options": [
             "A. An Event is a task carried out as part of the process",
             "B. An Event marks a moment such as the start or end of the process",
@@ -63,7 +65,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between an Activity and an Actor? ",
+        "text": "Which of the following correctly describe the difference between an Activity and an Actor? (select all that apply)",
         "options": [
             "A. An Activity is the role or person who performs a task",
             "B. An Actor is a task performed as part of the process",
@@ -74,7 +76,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between the Process and an Activity? ",
+        "text": "Which of the following correctly describe the difference between the Process and an Activity? (select all that apply)",
         "options": [
             "A. The Process is the entire business process that Activities are a composing part of",
             "B. The Process happens after every Activity, and an Activity happens after the Process ends",
@@ -85,7 +87,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which two of the following concepts is the Process composed of? ",
+        "text": "Which two of the following concepts is the Process composed of? (select all that apply)",
         "options": [
             "A. Actor",
             "B. Activity",
@@ -96,7 +98,7 @@ BP_PRE_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how an Actor relates to other concepts? ",
+        "text": "Which of the following are true about how an Actor relates to other concepts? (select all that apply)",
         "options": [
             "A. An Actor is linked to an Activity to indicate who performs it",
             "B. An Actor is linked to a DataObject to indicate who performs it",
@@ -110,7 +112,7 @@ BP_PRE_QUESTIONS = [
 BP_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about a SequenceFlow in a business process model? ",
+        "text": "Which of the following are true about a SequenceFlow in this business process? (select all that apply)",
         "options": [
             "A. A SequenceFlow defines the order in which activities, events, and gateways occur",
             "B. A SequenceFlow is the role or person responsible for carrying out a task",
@@ -121,7 +123,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about a DataObject in a business process model? ",
+        "text": "Which of the following are true about a DataObject in this business process? (select all that apply)",
         "options": [
             "A. A DataObject is a decision point where the flow can branch",
             "B. A DataObject is information that is produced or consumed as part of an activity",
@@ -132,7 +134,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between an Actor and a DataObject? ",
+        "text": "Which of the following correctly describe the difference between an Actor and a DataObject? (select all that apply)",
         "options": [
             "A. An Actor is the role or person responsible for an Activity",
             "B. A DataObject is information used or produced by an Activity",
@@ -143,7 +145,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between the Process and a Gateway? ",
+        "text": "Which of the following correctly describe the difference between the Process and a Gateway? (select all that apply)",
         "options": [
             "A. The Process happens only once, while a Gateway can repeat indefinitely",
             "B. The Process is a document, and a Gateway is a role",
@@ -154,7 +156,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which of the following are true about how a DataObject relates to other concepts? ",
+        "text": "Which of the following are true about how a DataObject relates to other concepts? (select all that apply)",
         "options": [
             "A. A DataObject must be linked to an Activity to show it is produced or consumed as part of a task",
             "B. A DataObject must be linked to a Gateway to show it is produced or consumed as part of a task",
@@ -165,7 +167,7 @@ BP_POST_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? ",
+        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? (select all that apply)",
         "options": [
             "A. An Activity is always linked to a Gateway to be valid",
             "B. An Activity can be linked to a DataObject that it produces or consumes",
@@ -181,7 +183,7 @@ BP_POST_QUESTIONS = [
 ENGINE_PRE_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about a Piston? ",
+        "text": "Which of the following are true about a Piston? (select all that apply)",
         "options": [
             "A. A Piston moves up and down inside a cylinder to compress the air-fuel mixture",
             "B. A Piston measures a physical quantity such as temperature or pressure",
@@ -192,7 +194,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about a Valve? ",
+        "text": "Which of the following are true about a Valve? (select all that apply)",
         "options": [
             "A. A Valve reads and processes sensor data to make control decisions",
             "B. A Valve is where combustion takes place",
@@ -203,7 +205,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between a Sensor and the ECU? ",
+        "text": "Which of the following correctly describe the difference between a Sensor and the ECU? (select all that apply)",
         "options": [
             "A. A Sensor injects fuel, and the ECU moves the Piston",
             "B. A Sensor measures a physical quantity like temperature or oxygen level",
@@ -214,7 +216,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between a Cylinder and the Engine? ",
+        "text": "Which of the following correctly describe the difference between a Cylinder and the Engine? (select all that apply)",
         "options": [
             "A. The Engine is the overall assembly composed of multiple Cylinders",
             "B. A Cylinder is one combustion chamber within the Engine",
@@ -225,7 +227,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which two of the following concepts is the Cylinder composed of? ",
+        "text": "Which two of the following concepts is the Cylinder composed of? (select all that apply)",
         "options": [
             "A. Piston",
             "B. ECU",
@@ -236,7 +238,7 @@ ENGINE_PRE_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how the ECU relates to other concepts? ",
+        "text": "Which of the following are true about how the ECU relates to other concepts? (select all that apply)",
         "options": [
             "A. The ECU only monitors or controls other ECUs",
             "B. The ECU monitors data coming from Sensors",
@@ -250,7 +252,7 @@ ENGINE_PRE_QUESTIONS = [
 ENGINE_POST_QUESTIONS = [
     {
         "id": "q1",
-        "text": "Which of the following are true about the ECU? ",
+        "text": "Which of the following are true about the ECU? (select all that apply)",
         "options": [
             "A. The ECU physically sprays fuel into the cylinder",
             "B. The ECU opens and closes to control gas flow into a cylinder",
@@ -261,7 +263,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q2",
-        "text": "Which of the following are true about a FuelInjector? ",
+        "text": "Which of the following are true about a FuelInjector? (select all that apply)",
         "options": [
             "A. A FuelInjector physically sprays fuel into the cylinder",
             "B. A FuelInjector measures a physical condition such as oxygen level",
@@ -272,7 +274,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q3",
-        "text": "Which of the following correctly describe the difference between the ECU and a FuelInjector? ",
+        "text": "Which of the following correctly describe the difference between the ECU and a FuelInjector? (select all that apply)",
         "options": [
             "A. The ECU sprays fuel, and the FuelInjector makes control decisions",
             "B. The ECU decides how much fuel to deliver and when",
@@ -283,7 +285,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q4",
-        "text": "Which of the following correctly describe the difference between a Piston and a Cylinder? ",
+        "text": "Which of the following correctly describe the difference between a Piston and a Cylinder? (select all that apply)",
         "options": [
             "A. A Piston is the chamber, and a Cylinder moves inside it",
             "B. A Cylinder is composed of a Piston that moves up and down inside it",
@@ -294,7 +296,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q5",
-        "text": "Which of the following are true about the Engine's composition? ",
+        "text": "Which of the following are true about the Engine's composition? (select all that apply)",
         "options": [
             "A. The Engine is composed of multiple Cylinders",
             "B. The Engine's internal structure is composed of Cylinders along with components such as Sensors and the ECU",
@@ -305,7 +307,7 @@ ENGINE_POST_QUESTIONS = [
     },
     {
         "id": "q6",
-        "text": "Which of the following are true about how a Sensor relates to other concepts? ",
+        "text": "Which of the following are true about how a Sensor relates to other concepts? (select all that apply)",
         "options": [
             "A. A Sensor must be linked to the ECU so its readings can be used to adjust engine behavior",
             "B. A Sensor must be linked to a Piston so its readings can be used",
@@ -350,6 +352,300 @@ DOMAINS = {
         "post": ENGINE_POST_QUESTIONS,
     },
 }
+
+
+# ── Post-quiz composition/association question pool ─────────────────────────
+# The 2 composition/association questions in each POST bank (q5 and q6)
+# assert a specific structural fact about the generated metamodel (e.g.
+# "DataObject is linked to Activity"). Nothing guarantees the LLM actually
+# built it that way — even with the required_concepts nudge in app.py, it
+# still picks its own relationships. A participant who answers based on what
+# their own generated model plainly shows would be marked wrong against an
+# assumption that isn't true of THEIR model.
+#
+# So each of these 2 slots per domain has a pool of alternative phrasings,
+# each tied to a concrete relation that must exist in the parsed JjScript for
+# that phrasing to be shown. select_post_questions() parses the actual
+# generated metamodel and, for each slot, uses the first pool entry whose
+# relation really holds — falling back to the original baseline question
+# (pool entry 0) if none of the alternatives match either (parsing failed,
+# or the model didn't build any of the anticipated relations at all).
+#
+# Pre-use questions are never affected — they're answered before any
+# generation happens, so there's nothing yet to be wrong about. Definition
+# and difference questions in the post-use bank aren't affected either —
+# they ask about a concept's general meaning, not about what this
+# particular generated model contains.
+
+def _ancestors(classes: dict, name: str) -> set[str]:
+    """Every class `name` transitively extends, via inheritance relations."""
+    seen: set[str] = set()
+    frontier = [name]
+    while frontier:
+        current = frontier.pop()
+        node = classes.get(current)
+        if not node:
+            continue
+        for rel in node.relations:
+            if rel.kind == "inheritance" and rel.target not in seen:
+                seen.add(rel.target)
+                frontier.append(rel.target)
+    return seen
+
+
+def _descendants(classes: dict, name: str) -> set[str]:
+    """Every class that transitively extends `name`."""
+    return {cname for cname in classes if name in _ancestors(classes, cname)}
+
+
+def _class_family(classes: dict, name: str) -> set[str]:
+    """`name` plus every class it's related to by inheritance, both ways.
+    JjScript's "extends" is a genuine is-a, so a relation to an abstract
+    superclass (e.g. SequenceFlow -> FlowNode) also holds for every concrete
+    subclass that extends it (e.g. Activity, if Activity extends FlowNode) —
+    without this, a real relation like that would read as "missing" just
+    because it's expressed through the supertype rather than named directly.
+    """
+    return {name} | _ancestors(classes, name) | _descendants(classes, name)
+
+
+def _has_relation(classes: dict, a: str, b: str) -> bool:
+    """True if a reference/containment relation connects class a and b (or
+    anything either extends/is extended by), in either direction."""
+    a_family = _class_family(classes, a)
+    b_family = _class_family(classes, b)
+    for family, other_family in ((a_family, b_family), (b_family, a_family)):
+        for owner_name in family:
+            owner = classes.get(owner_name)
+            if owner and any(
+                r.target in other_family and r.kind in ("reference", "containment")
+                for r in owner.relations
+            ):
+                return True
+    return False
+
+
+def _is_composed_of(classes: dict, whole: str, part: str) -> bool:
+    """True if `whole` (or an ancestor/descendant of it) has a containment
+    relation to `part` (or an ancestor/descendant of it) — whole owns part,
+    resolved through inheritance the same way _has_relation is."""
+    whole_family = _class_family(classes, whole)
+    part_family = _class_family(classes, part)
+    for owner_name in whole_family:
+        owner = classes.get(owner_name)
+        if owner and any(r.target in part_family and r.kind == "containment" for r in owner.relations):
+            return True
+    return False
+
+
+def _fact_holds(classes: dict, subject: str, obj: str, kind: str) -> bool:
+    if kind == "composed":
+        return _is_composed_of(classes, subject, obj)
+    return _has_relation(classes, subject, obj)
+
+
+def _select_variant(pool: list[dict], classes: dict) -> dict:
+    for variant in pool:
+        if all(_fact_holds(classes, a, b, k) for a, b, k in variant.get("requires", [])):
+            return variant
+    return pool[0]  # baseline, shown regardless even if its own fact doesn't verify
+
+
+BP_POST_Q5_POOL = [
+    {**BP_POST_QUESTIONS[4], "requires": [("Activity", "DataObject", "any")]},
+    {
+        "id": "q5",
+        "text": "Which of the following are true about how a DataObject relates to other concepts? (select all that apply)",
+        "options": [
+            "A. A DataObject must be linked to the Process to show it is produced or consumed somewhere in the flow",
+            "B. A DataObject must be linked to a Gateway to show it is produced or consumed as part of a task",
+            "C. A DataObject must be linked to an Actor directly, without going through any Activity",
+            "D. A DataObject can represent information relevant to more than one part of the Process",
+        ],
+        "answers": ["A", "D"],
+        "requires": [("Process", "DataObject", "any")],
+    },
+    {
+        "id": "q5",
+        "text": "Which of the following are true about how a DataObject relates to other concepts? (select all that apply)",
+        "options": [
+            "A. A DataObject must be linked to an Event to show it is produced or consumed at that moment",
+            "B. A DataObject must be linked to a Gateway to show it is produced or consumed as part of a task",
+            "C. A DataObject must be linked to an Actor directly, without going through any Event or Activity",
+            "D. A DataObject can represent information used by more than one Event",
+        ],
+        "answers": ["A", "D"],
+        "requires": [("Event", "DataObject", "any")],
+    },
+    {
+        "id": "q5",
+        "text": "Which of the following are true about how a DataObject relates to other concepts? (select all that apply)",
+        "options": [
+            "A. A DataObject must be linked to a SequenceFlow to show where in the process it is produced or consumed",
+            "B. A DataObject must be linked to a Gateway to be valid",
+            "C. A DataObject must be linked to an Actor directly, without going through any other concept",
+            "D. A DataObject can represent information relevant to more than one step in the process",
+        ],
+        "answers": ["A", "D"],
+        "requires": [("SequenceFlow", "DataObject", "any")],
+    },
+]
+
+BP_POST_Q6_POOL = [
+    {
+        **BP_POST_QUESTIONS[5],
+        "requires": [("Activity", "DataObject", "any"), ("Activity", "SequenceFlow", "any")],
+    },
+    {
+        "id": "q6",
+        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? (select all that apply)",
+        "options": [
+            "A. An Activity is always linked to a DataObject to be valid",
+            "B. An Activity can be linked to an Event that marks when it happens",
+            "C. An Activity is one composing part of the overall Process",
+            "D. An Activity is composed of the Process, DataObject, and Actor concepts",
+        ],
+        "answers": ["B", "C"],
+        "requires": [("Activity", "Event", "any"), ("Process", "Activity", "composed")],
+    },
+    {
+        "id": "q6",
+        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? (select all that apply)",
+        "options": [
+            "A. An Activity is always linked to a DataObject to be valid",
+            "B. An Activity is connected to Gateways as part of the process flow",
+            "C. An Activity is one composing part of the overall Process",
+            "D. An Activity is composed of the Process, DataObject, and Actor concepts",
+        ],
+        "answers": ["B", "C"],
+        "requires": [("Activity", "Gateway", "any"), ("Process", "Activity", "composed")],
+    },
+    {
+        "id": "q6",
+        "text": "Which of the following are true about how an Activity relates to other concepts, besides the Actor responsible for it? (select all that apply)",
+        "options": [
+            "A. An Activity is always linked to a DataObject to be valid",
+            "B. An Activity is one composing part of the overall Process",
+            "C. An Activity can be connected to other elements of the process flow",
+            "D. An Activity is composed of the Process, DataObject, and Actor concepts",
+        ],
+        "answers": ["B", "C"],
+        "requires": [("Process", "Activity", "composed")],
+    },
+]
+
+ENGINE_POST_Q5_POOL = [
+    {**ENGINE_POST_QUESTIONS[4], "requires": [("Engine", "Cylinder", "composed")]},
+    {
+        "id": "q5",
+        "text": "Which of the following are true about the Engine's composition? (select all that apply)",
+        "options": [
+            "A. The Engine is composed of multiple Cylinders",
+            "B. The Engine is composed of the ECU as one of its components",
+            "C. The Engine is one of several components inside a single Cylinder",
+            "D. The Engine and a Cylinder are the same kind of component",
+        ],
+        "answers": ["A", "B"],
+        "requires": [("Engine", "Cylinder", "composed"), ("Engine", "ECU", "composed")],
+    },
+    {
+        "id": "q5",
+        "text": "Which of the following are true about the Engine's composition? (select all that apply)",
+        "options": [
+            "A. The Engine is composed of multiple Cylinders",
+            "B. The Engine is composed of a FuelInjector directly, in addition to its Cylinders",
+            "C. The Engine is one of several components inside a single Cylinder",
+            "D. The Engine and a Cylinder are the same kind of component",
+        ],
+        "answers": ["A", "B"],
+        "requires": [("Engine", "Cylinder", "composed"), ("Engine", "FuelInjector", "composed")],
+    },
+    {
+        "id": "q5",
+        "text": "Which of the following are true about how the Engine relates to other concepts? (select all that apply)",
+        "options": [
+            "A. The Engine's internal structure includes the Cylinder as one of its components",
+            "B. A Cylinder is connected to the overall Engine assembly",
+            "C. The Engine is one of several components inside a single Cylinder",
+            "D. The Engine and a Sensor are the same kind of component",
+        ],
+        "answers": ["A", "B"],
+        "requires": [("Engine", "Cylinder", "any")],
+    },
+]
+
+ENGINE_POST_Q6_POOL = [
+    {**ENGINE_POST_QUESTIONS[5], "requires": [("Sensor", "ECU", "any")]},
+    {
+        "id": "q6",
+        "text": "Which of the following are true about how a Sensor relates to other concepts? (select all that apply)",
+        "options": [
+            "A. A Sensor must be linked to the Engine so its readings are part of the overall system",
+            "B. A Sensor must be linked to a Piston so its readings can be used",
+            "C. A Sensor provides data that helps monitor or control engine behavior",
+            "D. A Sensor must be linked to a Valve so its readings can be used",
+        ],
+        "answers": ["A", "C"],
+        "requires": [("Engine", "Sensor", "any")],
+    },
+    {
+        "id": "q6",
+        "text": "Which of the following are true about how a Sensor relates to other concepts? (select all that apply)",
+        "options": [
+            "A. A Sensor must be linked to a Cylinder to indicate which part of the engine it measures",
+            "B. A Sensor must be linked to a Piston so its readings can be used",
+            "C. A Sensor provides data that helps monitor conditions inside the engine",
+            "D. A Sensor must be linked to a Valve so its readings can be used",
+        ],
+        "answers": ["A", "C"],
+        "requires": [("Cylinder", "Sensor", "any")],
+    },
+    {
+        "id": "q6",
+        "text": "Which of the following are true about how a Sensor relates to other concepts? (select all that apply)",
+        "options": [
+            "A. A Sensor must be linked to a FuelInjector to help regulate fuel delivery",
+            "B. A Sensor must be linked to a Piston so its readings can be used",
+            "C. A Sensor provides data that supports decisions made elsewhere in the engine system",
+            "D. A Sensor must be linked to a Valve so its readings can be used",
+        ],
+        "answers": ["A", "C"],
+        "requires": [("FuelInjector", "Sensor", "any")],
+    },
+]
+
+_POST_POOLS = {
+    "bp": {4: BP_POST_Q5_POOL, 5: BP_POST_Q6_POOL},
+    "engine": {4: ENGINE_POST_Q5_POOL, 5: ENGINE_POST_Q6_POOL},
+}
+
+
+def select_post_questions(domain_key: str, metamodel_text: str) -> list[dict]:
+    """Returns the 6-question post-use bank for domain_key, with the 2
+    composition/association slots (index 4 and 5) swapped for whichever pool
+    variant's relation actually holds in metamodel_text — or left as the
+    fixed baseline if metamodel_text is empty, fails to parse, or none of the
+    pool's alternatives match either.
+    """
+    baseline = DOMAINS[domain_key]["post"]
+    text = (metamodel_text or "").strip()
+    for fence in ("```jjscript", "```python", "```"):
+        text = text.replace(fence, "")
+    text = text.strip()
+    if not text:
+        return baseline
+
+    try:
+        classes, _instances = parse_jjscript(text)
+    except Exception:
+        return baseline
+    if not classes:
+        return baseline
+
+    selected = list(baseline)
+    for idx, pool in _POST_POOLS[domain_key].items():
+        selected[idx] = _select_variant(pool, classes)
+    return selected
 
 
 def _compute_form_score(responses: dict[str, object], questions: list[dict]) -> int:
